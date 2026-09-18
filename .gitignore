@@ -1,0 +1,12 @@
+# Entorno virtual (se recrea desde pyproject.toml)
+.venv/
+
+# Cachés de Python (se regeneran solas)
+__pycache__/
+*.pyc
+
+# Secretos: NUNCA al repositorio
+.env
+
+# Basura de macOS
+.DS_Store
