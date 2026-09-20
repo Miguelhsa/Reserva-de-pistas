@@ -43,7 +43,7 @@ persistencia
 - Pista: 
 Atributos, numero de pista
 - Reserva:
-Atributos, numero de pista, usuarios, fehca, hora de inicio y fin de reserva
+Atributos, numero de pista, usuarios, fecha, hora de inicio y fin de reserva
 - Usuarios:
 Atributos, ID, nombre, apellidos, rol
 
