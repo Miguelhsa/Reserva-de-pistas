@@ -48,8 +48,8 @@ Atributos, numero de pista, usuarios, fehca, hora de inicio y fin de reserva
 Atributos, ID, nombre, apellidos, rol
 
 ## 6. Siguiente paso
-Diseño terminado (macro + objetos). Lo siguiente NO es código de dominio todavía:
-1. **Fase 0 — higiene de proyecto:** crear el proyecto con `uv`, entorno virtual, `.gitignore`, `git init`, primer commit.
-2. Luego, empezar a picar el **dominio**: las dataclasses `Pista`, `Reserva`, `Usuario` (tipadas de nacimiento) y la regla de no solapar franjas.
+Fase 0 HECHA: proyecto con `uv` (pyproject, .python-version), `.gitignore`, repo git con primer commit, y subido a GitHub (github.com/Miguelhsa/Reserva-de-pistas, rama `main`).
+
+Siguiente: empezar a picar el **dominio** — las dataclasses `Pista`, `Reserva`, `Usuario` (tipadas de nacimiento) y la regla de no solapar franjas. Antes: retirar el `main.py` de ejemplo y crear las carpetas de las capas (interfaz/dominio/persistencia).
 
 Pendiente menor: añadir en la sección 3 la frase-prueba "cambiar de JSON a Postgres solo toca la persistencia".
