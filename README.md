@@ -48,8 +48,8 @@ Atributos, numero de pista, usuarios, fecha, hora de inicio y fin de reserva
 Atributos, ID, nombre, apellidos, rol
 
 ## 6. Siguiente paso
-Fase 0 HECHA: proyecto con `uv` (pyproject, .python-version), `.gitignore`, repo git con primer commit, y subido a GitHub (github.com/Miguelhsa/Reserva-de-pistas, rama `main`).
+Dominio en marcha: modelos (`Pista`, `Usuario`, `Reserva`) y la regla atómica `Reserva.se_solapa_con(otra)` escritos y probados en REPL. Fase 0 hecha.
 
-Siguiente: empezar a picar el **dominio** — las dataclasses `Pista`, `Reserva`, `Usuario` (tipadas de nacimiento) y la regla de no solapar franjas. Antes: retirar el `main.py` de ejemplo y crear las carpetas de las capas (interfaz/dominio/persistencia).
+Siguiente: PIEZA 2 de la regla — no permitir crear una reserva si choca con ALGUNA de las existentes (recorrer la lista de reservas ya guardadas usando `se_solapa_con`). Va por encima del método atómico.
 
 Pendiente menor: añadir en la sección 3 la frase-prueba "cambiar de JSON a Postgres solo toca la persistencia".

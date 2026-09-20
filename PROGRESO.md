@@ -7,15 +7,10 @@ vive en `README.md`; aquí va el "por dónde vamos".
 
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
-- **Fase:** Fase 0 (higiene) TERMINADA. Diseño (macro + objetos) completo en el README.
-- **Última sesión:** 2026-09-18.
+- **Fase:** Dominio en marcha. Modelos (Pista, Usuario, Reserva) + regla atómica `Reserva.se_solapa_con(otra)` hechos y probados en REPL. Fase 0 hecha.
+- **Última sesión:** 2026-09-20.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`).
-- **Siguiente paso:** entrar al DOMINIO →
-  1. crear las carpetas de las capas (`interfaz/`, `dominio/`, `persistencia/`),
-  2. retirar el `main.py` de ejemplo de `uv`,
-  3. picar las dataclasses `Pista`, `Reserva`, `Usuario` (tipadas de nacimiento),
-  4. empezar a dar forma a la regla de no solapar.
-- **Pendiente de commit:** cambios sin fotografiar en `README.md` (sección 6) y este `PROGRESO.md`.
+- **Siguiente paso:** PIEZA 2 de la regla — "no crear una reserva si choca con ALGUNA de las existentes". Necesita la lista de reservas ya guardadas y usa `se_solapa_con` contra cada una. Va por encima del ladrillo atómico (que ya está).
 
 ## Bitácora
 
@@ -38,6 +33,11 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Atascos: licencia de Xcode sin aceptar (git no arrancaba); identidad de git sin configurar (falló el
   primer commit); `index.lock` suelto; rama `master` vs `main` al hacer push. Todo resuelto.
 
+### 2026-09-20 — Dominio: modelos y la regla de solapamiento
+- Hecho (modelos): `dominio/modelos.py` con las 3 dataclasses tipadas. Reserva compone `Pista` + `list[Usuario]` y la franja con dos `datetime`. Probado en REPL (composición navegable). `.venv` creado con `uv run`.
+- Hecho (regla): método `Reserva.se_solapa_con(otra)` en una línea — `return misma_pista and inicio_self < fin_otra and inicio_otra < fin_self`. Probado: True cuando chocan, False cuando no.
+- Atascos: el solapamiento costó (creía que bastaba una comparación; hacían falta las DOS con `and`); se lió con ifs/return antes de ver que se devuelve la condición directa. Resuelto.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -45,6 +45,10 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Modelado de dominio: la Reserva como franja; no filtrar detalles de persistencia en el dominio.
 - [x] Higiene de proyecto: uv/pyproject, entorno aislado, .gitignore (versionar la receta, no el plato),
       git (staging → commit), push a GitHub.
+- [x] Dataclass tipada (`:` anota, no `=` asigna); molde (clase) vs objeto (instancia); guardar objetos en variables.
+- [x] Composición con objetos reales; `datetime` como clase que se instancia; argumentos por posición vs con nombre.
+- [x] Lógica de solapamiento de franjas (dos comparaciones con `and`); una función sí/no devuelve la condición directamente.
+- [x] Recargar el REPL para ver cambios del archivo; predecir-y-comprobar al testear.
 
 ## A vigilar (puntos flacos crónicos)
 
