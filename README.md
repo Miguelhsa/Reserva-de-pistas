@@ -48,8 +48,10 @@ Atributos, numero de pista, usuarios, fecha, hora de inicio y fin de reserva
 Atributos, ID, nombre, apellidos, rol
 
 ## 6. Siguiente paso
-Dominio en marcha: modelos (`Pista`, `Usuario`, `Reserva`) y la regla atómica `Reserva.se_solapa_con(otra)` escritos y probados en REPL. Fase 0 hecha.
+Regla COMPLETA en el dominio: `Reserva.se_solapa_con(otra)` (dos reservas) + `choca_con_existentes(nueva, existentes)` (contra la lista). Probado en REPL. Pieza 2 hecha y fusionada vía Pull Request.
 
-Siguiente: PIEZA 2 de la regla — no permitir crear una reserva si choca con ALGUNA de las existentes (recorrer la lista de reservas ya guardadas usando `se_solapa_con`). Va por encima del método atómico.
+Siguiente: usar la regla en un flujo de "crear reserva" (comprobar `choca_con_existentes` antes de aceptar) y empezar a pensar la PERSISTENCIA — dónde viven las reservas existentes. Pendiente también: primeros tests con pytest.
+
+Flujo: cada cosa nueva va en su rama + Pull Request (no directo a `main`).
 
 Pendiente menor: añadir en la sección 3 la frase-prueba "cambiar de JSON a Postgres solo toca la persistencia".
