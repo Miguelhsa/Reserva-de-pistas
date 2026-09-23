@@ -24,3 +24,10 @@ class Reserva:
         #"si una función responde sí/no, devuelve la condición directamente".
         return self.pista == otra.pista and self.fecha_inicio < otra.fecha_fin and otra.fecha_inicio < self.fecha_fin
 
+
+def choca_con_existentes(nueva,existentes) -> bool:
+
+    for existente in existentes:
+        if nueva.se_solapa_con(existente):
+            return True
+    return False 
