@@ -31,3 +31,10 @@ def choca_con_existentes(nueva,existentes) -> bool:
         if nueva.se_solapa_con(existente):
             return True
     return False 
+
+def crear_reserva(nueva,existentes):
+    if choca_con_existentes(nueva,existentes):
+        raise ValueError("reserva solapada")
+    else:
+        existentes.append(nueva)
+        return nueva
