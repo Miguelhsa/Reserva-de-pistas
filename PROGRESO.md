@@ -11,7 +11,8 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Última sesión:** 2026-09-23.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`).
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`). Primer ciclo de PR completado el 2026-09-23.
-- **Siguiente paso:** atar la regla a un flujo de "crear reserva" (que use `choca_con_existentes` antes de aceptar) y empezar a asomarse a la PERSISTENCIA (¿dónde viven las reservas existentes?). Pendiente también: primeros tests con pytest.
+- **En curso (rama `feature/crear-reserva`):** función `crear_reserva(nueva, existentes)` escrita — `raise ValueError("reserva solapada")` si choca, si no `append` + (pendiente) `return nueva`. Falta pulir (`if choca...` sin `is True`; añadir `return nueva`), probarla y **abrir el Pull Request** (lo hará él para repasar el ciclo).
+- **Siguiente paso:** cerrar esa rama con su PR; luego empezar la PERSISTENCIA (¿dónde viven las reservas existentes?) y los primeros tests con pytest.
 
 ## Bitácora
 
