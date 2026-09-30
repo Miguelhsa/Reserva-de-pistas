@@ -7,12 +7,12 @@ vive en `README.md`; aquí va el "por dónde vamos".
 
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
-- **Fase:** Dominio. Regla COMPLETA: método atómico `Reserva.se_solapa_con(otra)` + función `choca_con_existentes(nueva, existentes)` que la comprueba contra la lista. Todo probado en REPL. Fase 0 hecha.
-- **Última sesión:** 2026-09-23.
-- **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`).
-- **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`). Primer ciclo de PR completado el 2026-09-23.
-- **En curso (rama `feature/crear-reserva`):** función `crear_reserva(nueva, existentes)` escrita — `raise ValueError("reserva solapada")` si choca, si no `append` + (pendiente) `return nueva`. Falta pulir (`if choca...` sin `is True`; añadir `return nueva`), probarla y **abrir el Pull Request** (lo hará él para repasar el ciclo).
-- **Siguiente paso:** cerrar esa rama con su PR; luego empezar la PERSISTENCIA (¿dónde viven las reservas existentes?) y los primeros tests con pytest.
+- **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
+- **Última sesión:** 2026-09-30.
+- **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
+- **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
+- **En curso (rama `feature/persistencia`):** `guardar` y `cargar` escritas y probadas; falta commitear `cargar`, hacer push y abrir el PR (lo pilota él).
+- **Siguiente paso:** (1) atar la persistencia al flujo real: al arrancar, `cargar` las reservas; en `crear_reserva`, volver a `guardar` tras aceptar. (2) primeros tests con pytest. (3) empezar la INTERFAZ (FastAPI). Nota: como la persistencia está aislada en el repositorio, el capstone "JSON→Postgres solo toca persistencia" ya está montado.
 
 ## Bitácora
 
@@ -45,6 +45,17 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Flujo de equipo estrenado y completado: rama `feature/...` -> commit -> push -> Pull Request -> review (Files changed) -> merge -> borrar rama -> sync local (`switch main`, `pull`, `branch -d`).
 - Atascos: arranque de sesión abrumado (se le juntaron git + diseño a la vez); bug de sangría (el `return False` dentro del `for` en vez de fuera) — lo cazó él solo.
 
+### 2026-09-24 — crear_reserva + 2º Pull Request (casi solo)
+- Hecho: `crear_reserva(nueva, existentes)` — `raise ValueError` si choca, si no `append` + `return nueva`. Pulida (sin `is True`) y probada. Fusionada por PR pilotado casi en solitario.
+
+### 2026-09-26 — Persistencia: guardar (serializar a JSON)
+- Hecho: capa `persistencia/repositorio.py`. `guardar(reservas, ruta)`: `asdict` a cada reserva -> `json.dump` al archivo con `default=str` (truco para los datetime). Crea `reservas.json` (al `.gitignore`: dato, no código).
+- Aprendió: serializar; `asdict`; `datetime` no es JSON-serializable; `dump` (archivo) vs `dumps` (texto); list comprehension.
+
+### 2026-09-30 — Persistencia: cargar (deserializar) — lo más difícil
+- Hecho: `cargar(ruta)`: `json.load` (lista de dicts) -> bucle -> reconstruir a mano cada objeto (`Pista` desde el dict, `Usuario`s en bucle, fechas con `datetime.fromisoformat`). Verificado con round-trip (`==` da True).
+- Costó (varias vueltas): json devuelve DICTS, no objetos (acceso `["clave"]`, no `.atributo`); reconstruir lo anidado; la pista es un dict único (no lista), los usuarios sí lista; la sangría del `return`. Perseveró y lo sacó.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -59,6 +70,10 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Recorrer una lista con `for` + decidir con `if`/`se_solapa_con`; patrón "return True a la primera, return False al final".
 - [x] La sangría en Python define qué va dentro/fuera de un bucle (bug del `return` dentro vs. fuera del `for`).
 - [x] Flujo de trabajo en equipo con git: rama de feature, commit, push, Pull Request, review, merge, sync y borrado de rama.
+
+- [x] Serialización/deserialización: objeto <-> texto JSON. `asdict`; `json.dump`/`dumps` y `load`/`loads` (la `s` = string/texto); `datetime` con `.isoformat()` y `datetime.fromisoformat()`.
+- [x] Reconstruir objetos anidados desde dicts: json devuelve dicts (acceso `["clave"]`, no `.atributo`); acceso encadenado; construir cada objeto desde sus campos.
+- [x] List comprehension; una carpeta es paquete importable sin `__init__.py` (namespace package).
 
 ## A vigilar (puntos flacos crónicos)
 

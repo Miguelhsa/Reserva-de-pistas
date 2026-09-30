@@ -10,3 +10,5 @@ __pycache__/
 
 # Basura de macOS
 .DS_Store
+
+reservas.json
