@@ -48,10 +48,8 @@ Atributos, numero de pista, usuarios, fecha, hora de inicio y fin de reserva
 Atributos, ID, nombre, apellidos, rol
 
 ## 6. Siguiente paso
-Regla COMPLETA en el dominio: `Reserva.se_solapa_con(otra)` (dos reservas) + `choca_con_existentes(nueva, existentes)` (contra la lista). Probado en REPL. Pieza 2 hecha y fusionada vía Pull Request.
+DOMINIO completo (modelos + regla + `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip. Como la persistencia está aislada, el capstone "JSON->Postgres solo toca persistencia" ya está montado.
 
-Siguiente: usar la regla en un flujo de "crear reserva" (comprobar `choca_con_existentes` antes de aceptar) y empezar a pensar la PERSISTENCIA — dónde viven las reservas existentes. Pendiente también: primeros tests con pytest.
+Siguiente: (1) atar la persistencia al flujo (al arrancar `cargar`; tras aceptar en `crear_reserva`, `guardar`). (2) primeros tests con pytest. (3) empezar la INTERFAZ (FastAPI).
 
-Flujo: cada cosa nueva va en su rama + Pull Request (no directo a `main`).
-
-Pendiente menor: añadir en la sección 3 la frase-prueba "cambiar de JSON a Postgres solo toca la persistencia".
+Flujo: cada cosa nueva va en su rama + Pull Request.
