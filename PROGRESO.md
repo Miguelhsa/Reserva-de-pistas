@@ -11,7 +11,8 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Última sesión:** 2026-09-30.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
-- **En curso (rama `feature/persistencia`):** `guardar` y `cargar` escritas y probadas; falta commitear `cargar`, hacer push y abrir el PR (lo pilota él).
+- **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
+- **En curso — atar al flujo (rama `feature/flujo-reservar`):** DISEÑO decidido hoy (solo diseño, sin código aún): una función nueva `reservar(nueva, ruta)` vivirá en la capa INTERFAZ y coordinará los 3 pasos: `cargar` -> `crear_reserva` -> `guardar`. Clave arquitectónica: `crear_reserva` (dominio) se queda PURA (recibe una lista, decide; NO toca archivos); la persistencia va ALREDEDOR, orquestada desde la interfaz, no dentro del dominio. Miguel tendía a meter cargar/guardar dentro de crear_reserva; se corrigió con el examen JSON->Postgres. Falta: escribir `reservar`, probarla, y su PR.
 - **Siguiente paso:** (1) atar la persistencia al flujo real: al arrancar, `cargar` las reservas; en `crear_reserva`, volver a `guardar` tras aceptar. (2) primeros tests con pytest. (3) empezar la INTERFAZ (FastAPI). Nota: como la persistencia está aislada en el repositorio, el capstone "JSON→Postgres solo toca persistencia" ya está montado.
 
 ## Bitácora
