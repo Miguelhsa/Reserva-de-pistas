@@ -12,8 +12,8 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
-- **En curso — atar al flujo (rama `feature/flujo-reservar`):** DISEÑO decidido hoy (solo diseño, sin código aún): una función nueva `reservar(nueva, ruta)` vivirá en la capa INTERFAZ y coordinará los 3 pasos: `cargar` -> `crear_reserva` -> `guardar`. Clave arquitectónica: `crear_reserva` (dominio) se queda PURA (recibe una lista, decide; NO toca archivos); la persistencia va ALREDEDOR, orquestada desde la interfaz, no dentro del dominio. Miguel tendía a meter cargar/guardar dentro de crear_reserva; se corrigió con el examen JSON->Postgres. Falta: escribir `reservar`, probarla, y su PR.
-- **Siguiente paso:** (1) atar la persistencia al flujo real: al arrancar, `cargar` las reservas; en `crear_reserva`, volver a `guardar` tras aceptar. (2) primeros tests con pytest. (3) empezar la INTERFAZ (FastAPI). Nota: como la persistencia está aislada en el repositorio, el capstone "JSON→Postgres solo toca persistencia" ya está montado.
+- **Atar al flujo: HECHO** — `reservar(nueva, ruta)` en `interfaz/app.py` coordina `cargar` → `crear_reserva` → `guardar`. `crear_reserva` quedó PURA (el dominio no toca archivos). Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda). PR de `feature/flujo-reservar` — verificar al retomar si está fusionado.
+- **Siguiente paso:** elegir entre (1) primeros **tests con pytest**, o (2) empezar la **INTERFAZ web con FastAPI**. (Dominio + persistencia + flujo ya están.) Nota: la persistencia aislada deja montado el capstone "JSON→Postgres solo toca persistencia".
 
 ## Bitácora
 
@@ -56,6 +56,10 @@ vive en `README.md`; aquí va el "por dónde vamos".
 ### 2026-09-30 — Persistencia: cargar (deserializar) — lo más difícil
 - Hecho: `cargar(ruta)`: `json.load` (lista de dicts) -> bucle -> reconstruir a mano cada objeto (`Pista` desde el dict, `Usuario`s en bucle, fechas con `datetime.fromisoformat`). Verificado con round-trip (`==` da True).
 - Costó (varias vueltas): json devuelve DICTS, no objetos (acceso `["clave"]`, no `.atributo`); reconstruir lo anidado; la pista es un dict único (no lista), los usuarios sí lista; la sangría del `return`. Perseveró y lo sacó.
+
+### 2026-10-01 — Atar la persistencia al flujo
+- Hecho: `interfaz/app.py` con `reservar(nueva, ruta)`: coordina `cargar` → `crear_reserva` → `guardar`. Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda).
+- Diseño: entendió que el front y el coordinador son papeles distintos del "borde"; `reservar` se quedó en interfaz por YAGNI (sin capa `aplicacion` aparte). Tendía a guardar solo la reserva nueva en vez de la lista completa; corregido.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
