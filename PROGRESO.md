@@ -8,12 +8,13 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-09-30.
+- **Última sesión:** 2026-10-03.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
 - **Atar al flujo: HECHO** — `reservar(nueva, ruta)` en `interfaz/app.py` coordina `cargar` → `crear_reserva` → `guardar`. `crear_reserva` quedó PURA (el dominio no toca archivos). Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda). PR de `feature/flujo-reservar` — verificar al retomar si está fusionado.
-- **Siguiente paso:** elegir entre (1) primeros **tests con pytest**, o (2) empezar la **INTERFAZ web con FastAPI**. (Dominio + persistencia + flujo ya están.) Nota: la persistencia aislada deja montado el capstone "JSON→Postgres solo toca persistencia".
+- **Tests: ESTRENADOS** — pytest configurado (Fase 0 ampliada: `uv add --dev pytest`, carpeta `test/`, `conftest.py` vacío en la raíz para el path) y **3 tests del dominio escritos por él**, pasando (`3 passed`), fusionados a `main` por PR #5. Flujo de equipo pilotado casi en solitario.
+- **Siguiente paso:** empezar la **INTERFAZ web con FastAPI** — es la última capa grande. (Dominio + persistencia + flujo + primeros tests ya están.) Nota: la persistencia aislada deja montado el capstone "JSON→Postgres solo toca persistencia".
 
 ## Bitácora
 
@@ -61,6 +62,12 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Hecho: `interfaz/app.py` con `reservar(nueva, ruta)`: coordina `cargar` → `crear_reserva` → `guardar`. Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda).
 - Diseño: entendió que el front y el coordinador son papeles distintos del "borde"; `reservar` se quedó en interfaz por YAGNI (sin capa `aplicacion` aparte). Tendía a guardar solo la reserva nueva en vez de la lista completa; corregido.
 
+### 2026-10-03 — Primeros tests con pytest + 5º Pull Request
+- Hecho: puso pytest en el proyecto (`uv add --dev pytest`, carpeta `test/`, y `conftest.py` **vacío en la raíz** para que pytest tenga la raíz en el path). Escribió **3 tests** en `test/test_dominio.py`: (1) dos reservas que se pisan → `se_solapa_con` True; (2) dos pegadas (una acaba a las 21:00, otra empieza a las 21:00) → False (con `assert not`); (3) `crear_reserva` contra una lista con un choque → `with pytest.raises(ValueError)`. `3 passed`. Fusionado a `main` por PR #5.
+- Aprendió: para qué sirven los tests; un test necesita cubrir el caso positivo Y el negativo (una función que devolviera siempre True pasaría el primero); el caso límite de franjas pegadas; `assert` / `assert not`; `pytest.raises` para comprobar que algo lanza una excepción; los tests crecen CON el proyecto, no al final.
+- Petición registrada en el CLAUDE.md general: incluir SIEMPRE pytest desde el inicio en cada proyecto.
+- Atascos: casi ninguno — pilotó el PR (push, abrir PR, merge, sync) casi solo; solo preguntó la sintaxis de `git push -u origin <rama>` y recordar que el `switch main` + `pull` es el ÚLTIMO paso (tras el merge en GitHub), no antes.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -79,6 +86,8 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Serialización/deserialización: objeto <-> texto JSON. `asdict`; `json.dump`/`dumps` y `load`/`loads` (la `s` = string/texto); `datetime` con `.isoformat()` y `datetime.fromisoformat()`.
 - [x] Reconstruir objetos anidados desde dicts: json devuelve dicts (acceso `["clave"]`, no `.atributo`); acceso encadenado; construir cada objeto desde sus campos.
 - [x] List comprehension; una carpeta es paquete importable sin `__init__.py` (namespace package).
+
+- [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
 
