@@ -8,13 +8,18 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-03.
+- **Última sesión:** 2026-10-03 (tarde).
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
 - **Atar al flujo: HECHO** — `reservar(nueva, ruta)` en `interfaz/app.py` coordina `cargar` → `crear_reserva` → `guardar`. `crear_reserva` quedó PURA (el dominio no toca archivos). Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda). PR de `feature/flujo-reservar` — verificar al retomar si está fusionado.
 - **Tests: ESTRENADOS** — pytest configurado (Fase 0 ampliada: `uv add --dev pytest`, carpeta `test/`, `conftest.py` vacío en la raíz para el path) y **3 tests del dominio escritos por él**, pasando (`3 passed`), fusionados a `main` por PR #5. Flujo de equipo pilotado casi en solitario.
-- **Siguiente paso:** empezar la **INTERFAZ web con FastAPI** — es la última capa grande. (Dominio + persistencia + flujo + primeros tests ya están.) Nota: la persistencia aislada deja montado el capstone "JSON→Postgres solo toca persistencia".
+- **INTERFAZ web (EN CURSO, rama `feature/interfaz-web`, SIN commitear):** diseño cerrado por él —
+  `interfaz/app.py` (vacío; será la app FastAPI = puro cableado), `interfaz/orquestador.py` (`reservar()` movido ahí),
+  `interfaz/routers/reservas.py` (molde de entrada ya escrito: `UsuarioIn` + `ReservaIn`). `fastapi[standard]` instalado.
+- **Siguiente paso:** escribir el endpoint POST en `routers/reservas.py`. Pasos ya pensados: (1) construir `Pista` desde el
+  número, (2) lista de `Usuario` desde los `UsuarioIn` (mismo patrón que en `cargar()`, con `.atributo`), (3) montar la
+  `Reserva`. Pendiente de razonar: (4) llamar a `reservar()` y (5) qué responder si lanza `ValueError` (franja ocupada).
 
 ## Bitácora
 
@@ -68,6 +73,23 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Petición registrada en el CLAUDE.md general: incluir SIEMPRE pytest desde el inicio en cada proyecto.
 - Atascos: casi ninguno — pilotó el PR (push, abrir PR, merge, sync) casi solo; solo preguntó la sintaxis de `git push -u origin <rama>` y recordar que el `switch main` + `pull` es el ÚLTIMO paso (tras el merge en GitHub), no antes.
 
+### 2026-10-03 (tarde) — Arranca la INTERFAZ web (FastAPI): diseño + molde de entrada
+- Hecho: eligió el primer endpoint — POST de reserva que llama a `reservar()` (no a `crear_reserva`, porque esa no guarda).
+  Al principio propuso "crear usuario"; se reconsideró porque esa capacidad no tiene dominio ni persistencia aún (la API es
+  el camarero: solo lleva pedidos a una cocina que exista). Diseñó el árbol de `interfaz/`: `app.py` (cableado),
+  `orquestador.py` (`reservar`, nombrado por su ROL) y `routers/reservas.py`; movió `reservar` él solo. `uv add "fastapi[standard]"`.
+  Escribió el molde Pydantic: `UsuarioIn(id, nombre, apellidos, rol)` + `ReservaIn(pista: int, usuarios: list[UsuarioIn],
+  fecha_inicio, fecha_fin)`. Vio solo que la lista de usuarios necesita su propio molde. `pista: int` (bien simplificado).
+- Decisión: `id` y `rol` los manda el cliente de forma PROVISIONAL (opción A, la más barata de tirar); en el diseño final
+  saldrán de la BBDD de usuarios cuando exista "registrar usuario" (riesgo anotado: cliente mandando `"rol": "admin"`).
+- Atascos: la explicación con tabla no le llegó (funcionó la analogía camarero/cocina); en el árbol se le cayó dos veces el
+  orquestador; nombres del molde no casaban con el dominio (`apellido`, `fecha_final`) + falta de `:` en la clase. Al llegar a
+  "pasos del endpoint" se bloqueó y cortó la sesión: "no me estoy enterando de nada". Sesión larga de pasos pequeños
+  encadenados → se saturó.
+- Nota: VS Code muestra "No module named pip" en el venv de uv — ruido inofensivo de la extensión de Python.
+- Dudas para la próxima: retomar con el MAPA del endpoint (camarero: recibe `ReservaIn` → traduce a `Reserva` del dominio →
+  `reservar()` → responde / error si choca), en corto y con analogía. Luego que escriba los pasos 1-3 (traducción).
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -87,10 +109,12 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Reconstruir objetos anidados desde dicts: json devuelve dicts (acceso `["clave"]`, no `.atributo`); acceso encadenado; construir cada objeto desde sus campos.
 - [x] List comprehension; una carpeta es paquete importable sin `__init__.py` (namespace package).
 
+- [x] Molde de entrada Pydantic con modelo anidado (`list[UsuarioIn]`) en el borde, separado del dominio (dataclass).
 - [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
 
 - Tiende a empezar por los OBJETOS/piezas en vez de por capacidades/capas.
 - Tiende a nombrar por la tecnología (frontend, bbdd) en vez de por el rol (interfaz, persistencia).
+- Sesiones largas de pasos pequeños encadenados le saturan (2026-10-03 tarde): cortar antes, recolocar el mapa más a menudo, y preferir analogías a tablas.
 - Con temas NUEVOS o desconocidos (p.ej. git), ir aún más despacio y UNA sola cosa a la vez: se abruma si se le juntan varios pasos o jerga nueva (pasó al arrancar el 2026-09-23).
