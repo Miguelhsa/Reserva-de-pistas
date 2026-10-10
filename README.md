@@ -36,8 +36,11 @@ El sistema tiene varias responsabilidades:
 ## 4. Carpetas
 reserva-pistas/
 interfaz
-dominio
-persistencia
+- app : crea la app y enchufa los routers
+- orquestador: coordina el flujo de reservar: carga las reservas (persistencia), comprueba y añade la nueva (dominio) y guarda (persistencia).
+- router/reservas: el endpoint POST: recibe el pedido, lo traduce a objetos del dominio, llama al orquestador y contesta (409 si choca). Sin lógica de negocio.
+- modelos: tenemos como son los objetos que usaremos y los metodos y las funciones para saber si solapan reservas y crearlas
+persistencia : guarda las reservas creadas, por ahora en json
 
 ## 5. Dominio: los objetos
 - Pista: 
@@ -47,9 +50,19 @@ Atributos, numero de pista, usuarios, fecha, hora de inicio y fin de reserva
 - Usuarios:
 Atributos, ID, nombre, apellidos, rol
 
-## 6. Siguiente paso
-DOMINIO completo (modelos + regla + `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip. Como la persistencia está aislada, el capstone "JSON->Postgres solo toca persistencia" ya está montado.
+## 6. Estado y siguiente paso
 
-Siguiente: (1) atar la persistencia al flujo (al arrancar `cargar`; tras aceptar en `crear_reserva`, `guardar`). (2) primeros tests con pytest. (3) empezar la INTERFAZ (FastAPI).
+**Hecho:**
+- DOMINIO: modelos (`Pista`, `Usuario`, `Reserva`) + regla de no solapar (`se_solapa_con`, `choca_con_existentes`) + `crear_reserva`.
+- PERSISTENCIA: `guardar` + `cargar` a JSON (`reservas.json`), verificada con round-trip. Aislada: el capstone "JSON -> Postgres solo toca persistencia" ya está montado.
+- ORQUESTADOR: `reservar()` coordina cargar -> crear_reserva -> guardar.
+- TESTS: 3 tests del dominio con pytest.
+- INTERFAZ web (FastAPI): `POST /reserva` (`solicitar_reserva`). Recibe `ReservaIn`, lo traduce a `Reserva` del dominio, llama a `reservar()` y contesta. Si la franja choca, devuelve **409**.
+  Arranque: `uv run fastapi dev interfaz/app.py` -> `/docs`.
+
+**Siguiente:**
+1. **Molde de salida**: decidir qué devuelve el endpoint cuando la reserva sale bien (ahora devuelve el objeto del dominio tal cual -> acoplamiento dominio/API).
+2. Test del endpoint con pytest.
+3. Más capacidades: consultar disponibilidad, cancelar/modificar, registrar usuario (sustituirá el `id`/`rol` provisionales que hoy manda el cliente).
 
 Flujo: cada cosa nueva va en su rama + Pull Request.
