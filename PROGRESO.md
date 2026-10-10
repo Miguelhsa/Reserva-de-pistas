@@ -8,18 +8,20 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-03 (tarde).
+- **Última sesión:** 2026-10-04.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
 - **Atar al flujo: HECHO** — `reservar(nueva, ruta)` en `interfaz/app.py` coordina `cargar` → `crear_reserva` → `guardar`. `crear_reserva` quedó PURA (el dominio no toca archivos). Probado end-to-end (la que cabe se añade; la que choca lanza ValueError y no se guarda). PR de `feature/flujo-reservar` — verificar al retomar si está fusionado.
 - **Tests: ESTRENADOS** — pytest configurado (Fase 0 ampliada: `uv add --dev pytest`, carpeta `test/`, `conftest.py` vacío en la raíz para el path) y **3 tests del dominio escritos por él**, pasando (`3 passed`), fusionados a `main` por PR #5. Flujo de equipo pilotado casi en solitario.
-- **INTERFAZ web (EN CURSO, rama `feature/interfaz-web`, SIN commitear):** diseño cerrado por él —
-  `interfaz/app.py` (vacío; será la app FastAPI = puro cableado), `interfaz/orquestador.py` (`reservar()` movido ahí),
-  `interfaz/routers/reservas.py` (molde de entrada ya escrito: `UsuarioIn` + `ReservaIn`). `fastapi[standard]` instalado.
-- **Siguiente paso:** escribir el endpoint POST en `routers/reservas.py`. Pasos ya pensados: (1) construir `Pista` desde el
-  número, (2) lista de `Usuario` desde los `UsuarioIn` (mismo patrón que en `cargar()`, con `.atributo`), (3) montar la
-  `Reserva`. Pendiente de razonar: (4) llamar a `reservar()` y (5) qué responder si lanza `ValueError` (franja ocupada).
+- **INTERFAZ web — primer endpoint HECHO y FUSIONADO a `main` (2026-10-04):** `interfaz/app.py` (cableado: `FastAPI()` +
+  `include_router`), `interfaz/orquestador.py` (`reservar`), `interfaz/routers/reservas.py` (moldes `UsuarioIn`/`ReservaIn` +
+  `POST /reserva` → `solicitar_reserva`). Flujo completo: recibe → traduce a `Reserva` del dominio → `reservar()` → contesta;
+  si la franja choca, `except ValueError` → `raise HTTPException(409)`. Probado por `/docs`: 1er envío guarda, 2º idéntico → 409.
+  Arranque: `uv run fastapi dev interfaz/app.py`. `__init__.py` añadidos en `interfaz/` y `interfaz/routers/`.
+- **Siguiente paso:** (1) actualizar él el README (sección 4 Carpetas y 6 Siguiente paso); (2) **molde de SALIDA** — ahora el
+  endpoint devuelve el objeto del dominio tal cual (acoplamiento dominio↔API; en el inmobiliario lo resolvió con `response_model`).
+  Después: test del endpoint con pytest, y más capacidades (consultar disponibilidad, cancelar…).
 
 ## Bitácora
 
@@ -90,6 +92,22 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Dudas para la próxima: retomar con el MAPA del endpoint (camarero: recibe `ReservaIn` → traduce a `Reserva` del dominio →
   `reservar()` → responde / error si choca), en corto y con analogía. Luego que escriba los pasos 1-3 (traducción).
 
+### 2026-10-04 — Endpoint POST de reserva COMPLETO (los 4 pasos del "camarero") + PR fusionado
+- Hecho: esqueleto del router (`APIRouter(prefix="/reserva", tags=[...])`, `@router.post`), cableado en `app.py`, y el cuerpo de
+  `solicitar_reserva`: construye `Pista`, lista de `Usuario` (bucle, mismo patrón que `cargar()` con `.atributo`) y la `Reserva`;
+  llama a `reservar(reserva, RUTA_RESERVAS)` (constante arriba del archivo); `try/except ValueError` → `raise HTTPException(409)`.
+  Probado de punta a punta por `/docs`. Rama → PR → merge a `main` pilotado por él.
+- Aprendió: `fastapi dev` necesita `__init__.py` para encontrar la raíz (a Python no le hacen falta; a la herramienta sí) —
+  eligió ponerlos; leer un traceback buscando SUS archivos e ignorando `.venv`; un archivo JSON vacío no es una lista vacía
+  (`[]`), y `guardar` escribe una lista de dicts; Pydantic ya convierte a `datetime` (no re-envolver con `datetime(...)`);
+  fechas con `Z` (con zona) no se pueden comparar con las sin zona; 409 Conflict; el borde traduce el error de negocio a HTTP
+  (el dominio no sabe de códigos); `raise` vs crear la excepción sin lanzarla; `except` con tipo concreto como filtro.
+- Atascos: no recordaba montar router ni import (se resolvió enseñándole SU código de control-gastos); `prefix` sin `/` y
+  `.Post` en mayúscula; nombres (`registrar` copiado, errata `rentrada_reserva`) → acabó en `solicitar_reserva`; la HTTPException
+  sin `raise` y `except:` a secas — se atascó y hubo que subir a pseudocódigo con huecos.
+- Funcionó: arrancar con el mapa de 4 pasos (camarero) y volver a él tras cada paso; usar su propio código antiguo como chuleta.
+- Dudas para la próxima: ninguna abierta. Empezar por el molde de salida (qué devuelve cuando sale bien).
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -110,6 +128,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] List comprehension; una carpeta es paquete importable sin `__init__.py` (namespace package).
 
 - [x] Molde de entrada Pydantic con modelo anidado (`list[UsuarioIn]`) en el borde, separado del dominio (dataclass).
+- [x] Endpoint FastAPI completo: router + cableado, traducir entrada Pydantic → objeto de dominio, llamar al orquestador, y traducir el error de dominio a HTTP (`try/except ValueError` + `raise HTTPException(409)`).
 - [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
