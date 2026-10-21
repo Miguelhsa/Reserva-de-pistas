@@ -1,10 +1,13 @@
 from pydantic import BaseModel
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from dominio.modelos import Pista, Usuario, Reserva
 from interfaz.orquestador import reservar
 
 RUTA_RESERVAS = "reservas.json"
+
+def get_ruta() -> str:
+    return RUTA_RESERVAS
 
 router = APIRouter(prefix="/reserva",tags=["Reservas"])
 #En UsuarioIn id y rol son provisionales
@@ -27,13 +30,13 @@ class UsuarioOut(BaseModel):
     apellidos: str
 #Si se ha reservado, molde de salida 
 class ReservaOut(BaseModel):
-    pista: Pista
+    pista: int
     usuarios: list[UsuarioOut]
     fecha_inicio: datetime
     fecha_fin: datetime
 
 @router.post("",response_model=ReservaOut)
-def solicitar_reserva(nueva_reserva: ReservaIn):
+def solicitar_reserva(nueva_reserva: ReservaIn, ruta : str = Depends(get_ruta)):
     #pasos:
     #Construir una pista
     #Construir una lista con los usuarios
@@ -51,7 +54,7 @@ def solicitar_reserva(nueva_reserva: ReservaIn):
         )
 
     try:
-        reservar(reserva_nueva_guardar,RUTA_RESERVAS)
+        reservar(reserva_nueva_guardar,ruta)
 
     except ValueError:
         raise HTTPException(status_code=409, detail="Esa franja ya esta reservada")
@@ -69,3 +72,5 @@ def solicitar_reserva(nueva_reserva: ReservaIn):
         fecha_fin= reserva_nueva_guardar.fecha_fin
     )
     return reserva_nueva_out
+
+

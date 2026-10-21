@@ -12,3 +12,7 @@ __pycache__/
 .DS_Store
 
 reservas.json
+
+practicas/
+
+test_reservas.json
