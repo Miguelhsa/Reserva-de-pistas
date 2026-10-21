@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-04.
+- **Última sesión:** 2026-10-17.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -19,9 +19,26 @@ vive en `README.md`; aquí va el "por dónde vamos".
   `POST /reserva` → `solicitar_reserva`). Flujo completo: recibe → traduce a `Reserva` del dominio → `reservar()` → contesta;
   si la franja choca, `except ValueError` → `raise HTTPException(409)`. Probado por `/docs`: 1er envío guarda, 2º idéntico → 409.
   Arranque: `uv run fastapi dev interfaz/app.py`. `__init__.py` añadidos en `interfaz/` y `interfaz/routers/`.
-- **Siguiente paso:** (1) actualizar él el README (sección 4 Carpetas y 6 Siguiente paso); (2) **molde de SALIDA** — ahora el
-  endpoint devuelve el objeto del dominio tal cual (acoplamiento dominio↔API; en el inmobiliario lo resolvió con `response_model`).
-  Después: test del endpoint con pytest, y más capacidades (consultar disponibilidad, cancelar…).
+- **MOLDE DE SALIDA — HECHO y FUSIONADO a `main` (2026-10-10, rama `feature/molde-salida`):** `UsuarioOut(nombre, apellidos)` +
+  `ReservaOut(pista: int, usuarios: list[UsuarioOut], fecha_inicio, fecha_fin)`; el router traduce dominio → `ReservaOut` al
+  salir (simétrico a la entrada) y el decorador lleva `response_model=ReservaOut`. La respuesta ya NO expone `id` ni `rol`.
+  Probado con un set de 8 casos manuales en `/docs` (200 libre, 409 idéntica/parcial/contenida, 200 pegada, 200 otra pista,
+  422 tipo incorrecto, 422 campo que falta) — todos correctos.
+- **README al día** (secciones 4 Carpetas y 6 Estado/siguiente paso).
+- **TEST DEL ENDPOINT — EN CURSO (rama `feature/test-endpoint`, SIN commitear):**
+  - Pieza 1 HECHA: `get_ruta() -> str` (devuelve `RUTA_RESERVAS`) y el endpoint la **pide** con
+    `Depends(get_ruta)` como parámetro; `reservar()` usa ese parámetro. Pendiente: renombrar el parámetro `repo` → `ruta`.
+  - Pieza 2 HECHA (2026-10-17): `test/test_endpoint.py` con `RUTA_PRUEBA = "test_reservas.json"`, `get_ruta_test()`,
+    y el primer test de endpoint: `guardar([], RUTA_PRUEBA)` (reset) → `dependency_overrides[get_ruta] = get_ruta_test` →
+    `cliente.post("/reserva", json=datos_reserva)` → assert 200 + `respuesta_esperada` (sin id/rol) → `.clear()`.
+    PASA, y verificado que `reservas.json` real NO se toca. `test_reservas.json` y `practicas/` en `.gitignore`.
+  - SIGUIENTE: test del 409 (reserva que choca) — que lo escriba él solo (pista: dos POST de la misma franja).
+  - Ejercicio aparte en `practicas/EJERCICIO_DEPENDS.md` (+ `practica_depends.py`, `test_practica_depends.py`):
+    Partes 1-3 hechas, test 1 de la Parte 4 pasando. Falta el test 2 (`dependency_overrides`) y la Parte 5.
+    `practicas/` NO debe entrar en el commit del proyecto.
+- **Siguiente paso (petición de Miguel):** EMPEZAR repasando **qué hace `Depends`** y **por qué unas veces va en el
+  decorador (`dependencies=[...]`) y otras como parámetro de la función**; luego terminar el test 2 del ejercicio y
+  pasar al test real del endpoint.
 
 ## Bitácora
 
@@ -108,6 +125,38 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Funcionó: arrancar con el mapa de 4 pasos (camarero) y volver a él tras cada paso; usar su propio código antiguo como chuleta.
 - Dudas para la próxima: ninguna abierta. Empezar por el molde de salida (qué devuelve cuando sale bien).
 
+### 2026-10-07 / 10 — README al día + MOLDE DE SALIDA (dominio y API desacoplados por los dos lados) + PR fusionado
+- Hecho: actualizó el README (sección 4: rol de `app`, `orquestador`, `router`, `modelos`, `persistencia`; la 6 la reescribió el
+  mentor a petición suya). Decidió qué ve el socio en la confirmación (pista, quién juega, cuándo) y qué NO (id, rol). Escribió
+  `UsuarioOut`/`ReservaOut`, la traducción dominio → salida con bucle, y `response_model`. Rama `feature/molde-salida` → PR → merge.
+- Aprendió: traducir al entrar Y al salir (el borde aísla el dominio en ambos sentidos); `response_model` = contrato de salida
+  (documenta en `/docs` y filtra lo que sale); **Pydantic solo acepta argumentos con nombre** (`campo=valor`), las dataclass
+  también por posición — dos moldes, ambos crean objetos, reglas distintas para rellenarlos; sacar un `int` de dentro de un
+  objeto (`.pista.numero`); `fastapi dev` recarga solo al guardar (solo hay que refrescar `/docs`).
+- Atascos: en el README describió el router como "endpoints y su lógica" (contradice su regla de interfaz sin lógica) y el
+  orquestador como si guardara él; empezó a trabajar en `main` sin rama (avisado → creó la rama sin perder cambios); construyó
+  los `Out` por posición y metió el objeto `Pista` donde iba un `int` — no lo había probado antes de enseñarlo.
+- Funcionó: apoyarse en SU código (`HTTPException(status_code=..., detail=...)`, `response_model` del inmobiliario) como pista;
+  un set de pruebas con resultado esperado para que prediga antes de ejecutar.
+- Dudas para la próxima: ninguna abierta. Empezar por el test del endpoint (pytest + cliente de pruebas de FastAPI).
+
+### 2026-10-12 / 13 — Test del endpoint: refactor a `Depends(get_ruta)` + ejercicio aparte de `Depends`
+- Hecho: razonó por qué un test no puede usar el `reservas.json` real (2ª ejecución → 409; ensucia datos; un test debe dar
+  siempre el mismo resultado). Recordó `Depends` del inmobiliario. Escribió `get_ruta` y la inyectó como parámetro del
+  endpoint. Pidió un ejercicio aparte para entenderlo: hizo la mini-app (`/saludo` con Depends como parámetro, `/secreto`
+  con `dependencies=[...]` en el decorador) y su primer test de endpoint con `TestClient` (`1 passed`).
+- Aprendió: `Depends` = FastAPI llama a la función ANTES del endpoint (no tú); en el decorador → control de paso, el valor
+  se tira; como parámetro → te entrega el valor. Por eso se puede sustituir desde fuera en un test. `print` va a la terminal
+  (cocina), `return` al cliente. `pytest -v` (nombre de cada test) y `-s` (deja ver los print). Un test necesita
+  `def test_...()` sin parámetros, guardar la respuesta y `assert` sobre `.status_code` y `.json()`.
+- Atascos: muchos. `return "RUTA_RESERVAS"` con comillas (texto literal en vez de la variable); función nombrada
+  `get_repositorio` (copiada); definida DEBAJO del endpoint; volvió a poner `pista: Pista` en `ReservaOut`; puso
+  `Depends(get_ruta)` en el decorador y luego `dependencies=[...]` como parámetro de función (confunde los dos sitios);
+  propuso un `if` test/real dentro de `get_` (se explicó que el código de producción no debe saber de tests). El test 1 se
+  le dio hecho (último peldaño) y se explicó línea a línea con su porqué.
+- Dudas para la próxima: **repasar `Depends` y decorador vs. parámetro** (lo pidió explícitamente). Después test 2 del
+  ejercicio (él solo) y el test real del endpoint de reservas.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -129,11 +178,17 @@ vive en `README.md`; aquí va el "por dónde vamos".
 
 - [x] Molde de entrada Pydantic con modelo anidado (`list[UsuarioIn]`) en el borde, separado del dominio (dataclass).
 - [x] Endpoint FastAPI completo: router + cableado, traducir entrada Pydantic → objeto de dominio, llamar al orquestador, y traducir el error de dominio a HTTP (`try/except ValueError` + `raise HTTPException(409)`).
+- [x] Molde de salida (`...Out` + `response_model`): traducir dominio → salida en el borde; no exponer datos internos (id, rol).
+- [x] Pydantic se construye solo con argumentos con nombre (`campo=valor`); dataclass admite también posición.
 - [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
 
 - Tiende a empezar por los OBJETOS/piezas en vez de por capacidades/capas.
 - Tiende a nombrar por la tecnología (frontend, bbdd) en vez de por el rol (interfaz, persistencia).
+- Confunde los dos sitios de `Depends` (decorador vs. parámetro) — repasar hasta que salga solo.
+- Comillas vs. variable: `"RUTA"` (texto) vs `RUTA` (valor).
+- Enseña código sin probarlo antes: pedirle que lo ejecute/pruebe él antes de pasarlo a revisión.
+- Olvida crear la rama antes de empezar (empezó en `main` el 2026-10-10).
 - Sesiones largas de pasos pequeños encadenados le saturan (2026-10-03 tarde): cortar antes, recolocar el mapa más a menudo, y preferir analogías a tablas.
 - Con temas NUEVOS o desconocidos (p.ej. git), ir aún más despacio y UNA sola cosa a la vez: se abruma si se le juntan varios pasos o jerga nueva (pasó al arrancar el 2026-09-23).
