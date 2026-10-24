@@ -49,31 +49,30 @@ RUTA_PRUEBA = "test_reservas.json"
 def get_ruta_test() -> str:
     return RUTA_PRUEBA
 
-def test_guardar_reservas():
+def test_reserva_libre_se_acepta():
     guardar([],RUTA_PRUEBA)
     app.dependency_overrides[get_ruta] = get_ruta_test
-    escribir = cliente.post("/reserva",json = datos_reserva )
-    assert escribir.status_code == 200
-    assert escribir.json() == respuesta_esperada
+    respuesta = cliente.post("/reserva",json = datos_reserva )
+    assert respuesta.status_code == 200
+    assert respuesta.json() == respuesta_esperada
     app.dependency_overrides.clear()
 
 def test_reserva_limite():
     #creo otra reserva que este al limite de solapar
     guardar([],RUTA_PRUEBA)
     app.dependency_overrides[get_ruta] = get_ruta_test
-    reserva = cliente.post("/reserva", json = datos_reserva)
-    escribir = cliente.post("/reserva", json = datos_reserva_limite)
-    assert reserva.status_code == 200
-    assert escribir.status_code == 200
-    #assert escribir.json() == respuesta_esperada
+    respuesta_previa = cliente.post("/reserva", json = datos_reserva)
+    respuesta = cliente.post("/reserva", json = datos_reserva_limite)
+    assert respuesta_previa.status_code == 200
+    assert respuesta.status_code == 200
     app.dependency_overrides.clear()
 
 def test_reserva_solapa():
     guardar([],RUTA_PRUEBA)
     app.dependency_overrides[get_ruta] = get_ruta_test
-    reserva = cliente.post("/reserva", json = datos_reserva)
-    escribir = cliente.post("/reserva", json = datos_reserva_solapa)
-    assert reserva.status_code == 200
-    assert escribir.status_code == 409
-    assert escribir.json() == {"detail":"Esa franja ya esta reservada"}
+    respuesta_previa = cliente.post("/reserva", json = datos_reserva)
+    respuesta = cliente.post("/reserva", json = datos_reserva_solapa)
+    assert respuesta_previa.status_code == 200
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detail":"Esa franja ya esta reservada"}
     app.dependency_overrides.clear()
