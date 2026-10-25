@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-17.
+- **Última sesión:** 2026-10-24.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -25,20 +25,24 @@ vive en `README.md`; aquí va el "por dónde vamos".
   Probado con un set de 8 casos manuales en `/docs` (200 libre, 409 idéntica/parcial/contenida, 200 pegada, 200 otra pista,
   422 tipo incorrecto, 422 campo que falta) — todos correctos.
 - **README al día** (secciones 4 Carpetas y 6 Estado/siguiente paso).
-- **TEST DEL ENDPOINT — EN CURSO (rama `feature/test-endpoint`, SIN commitear):**
-  - Pieza 1 HECHA: `get_ruta() -> str` (devuelve `RUTA_RESERVAS`) y el endpoint la **pide** con
-    `Depends(get_ruta)` como parámetro; `reservar()` usa ese parámetro. Pendiente: renombrar el parámetro `repo` → `ruta`.
-  - Pieza 2 HECHA (2026-10-17): `test/test_endpoint.py` con `RUTA_PRUEBA = "test_reservas.json"`, `get_ruta_test()`,
-    y el primer test de endpoint: `guardar([], RUTA_PRUEBA)` (reset) → `dependency_overrides[get_ruta] = get_ruta_test` →
-    `cliente.post("/reserva", json=datos_reserva)` → assert 200 + `respuesta_esperada` (sin id/rol) → `.clear()`.
-    PASA, y verificado que `reservas.json` real NO se toca. `test_reservas.json` y `practicas/` en `.gitignore`.
-  - SIGUIENTE: test del 409 (reserva que choca) — que lo escriba él solo (pista: dos POST de la misma franja).
-  - Ejercicio aparte en `practicas/EJERCICIO_DEPENDS.md` (+ `practica_depends.py`, `test_practica_depends.py`):
-    Partes 1-3 hechas, test 1 de la Parte 4 pasando. Falta el test 2 (`dependency_overrides`) y la Parte 5.
-    `practicas/` NO debe entrar en el commit del proyecto.
-- **Siguiente paso (petición de Miguel):** EMPEZAR repasando **qué hace `Depends`** y **por qué unas veces va en el
-  decorador (`dependencies=[...]`) y otras como parámetro de la función**; luego terminar el test 2 del ejercicio y
-  pasar al test real del endpoint.
+- **TESTS DEL ENDPOINT — HECHOS Y FUSIONADOS (2026-10-21, rama `feature/test-endpoint` → PR → merge):**
+  - El endpoint pide la ruta con `ruta: str = Depends(get_ruta)` (`get_ruta()` en `routers/reservas.py`).
+  - `test/test_endpoint.py`: `RUTA_PRUEBA = "test_reservas.json"`, `get_ruta_test()`, `cliente = TestClient(app)`, y 3 tests
+    INDEPENDIENTES (cada uno: `guardar([], RUTA_PRUEBA)` → `dependency_overrides[get_ruta] = get_ruta_test` → POSTs →
+    asserts → `.clear()`): reserva libre → 200 + `respuesta_esperada` (sin id/rol); reserva pegada (19:30) → 200;
+    reserva que solapa → 409 + `{"detail": "Esa franja ya esta reservada"}`. `reservas.json` real verificado intacto.
+  - `.gitignore`: `practicas/` y `test_reservas.json`. Ejercicio aparte de Depends en `practicas/` (local, no versionado).
+- **Pendientes pequeños de tests: HECHOS** (rama `feature/limpieza-tests`, mergeada): `respuesta`, `respuesta_previa`,
+  `respuesta_esperada`, `test_reserva_libre_se_acepta`; 200 del POST de preparación comprobado; basura de pista 0 borrada.
+- **NUEVA CAPACIDAD EN CURSO: "dar de alta una pista"** (rama `feature/alta-pista`, sin commitear). Decidido por él:
+  primero alta de pista (para practicar el ciclo completo) y DESPUÉS "consultar disponibilidad" (que necesita la lista de
+  pistas del club). Cancelar queda para más tarde (requiere decidir cómo identificar una reserva: pista+inicio o un `id`).
+  - Regla de negocio: no se puede dar de alta una pista con un número que ya existe → `ValueError` → (409 en la API).
+  - Dominio HECHO: `crear_pista(nueva: Pista, existentes: list[Pista]) -> Pista` (bucle comparando `.numero`, `append` FUERA
+    del bucle, devuelve la nueva). Tests en `test_dominio.py`: número nuevo (`assert nueva in existentes`) y repetido
+    (`pytest.raises`). 8 passed.
+  - SIGUIENTE: persistencia de pistas. Pregunta abierta: ¿mismo `repositorio.py` o archivo nuevo?, ¿cómo nombrar las
+    funciones si ya existen `guardar`/`cargar`? Luego orquestador → router `/pista` (+moldes, include_router) → tests endpoint.
 
 ## Bitácora
 
@@ -157,6 +161,37 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Dudas para la próxima: **repasar `Depends` y decorador vs. parámetro** (lo pidió explícitamente). Después test 2 del
   ejercicio (él solo) y el test real del endpoint de reservas.
 
+### 2026-10-17 / 21 — Repaso de Depends + tests del endpoint (3, independientes) + PR fusionado
+- Hecho: repasó `Depends` (decorador = control de paso, el valor se tira; parámetro = te entrega el valor); se corrigió que
+  el valor va DE la función AL parámetro, no al revés. Cerró la práctica (`dependency_overrides` + `.clear()`; `TestClient`
+  sí prueba el endpoint, no solo funciones). Escribió `test/test_endpoint.py` con 3 tests y los separó en independientes.
+  Rama → PR → merge.
+- Aprendió: lo que manda el cliente es entrada (molde); lo que pone el servidor es `Depends`. Tres formatos de una reserva
+  (entrada API / salida API / archivo JSON) — no mezclarlos. Reset con `guardar([], RUTA)` reutilizando su persistencia.
+  Un test = una cosa; cada test monta su propio escenario (ejecutable solo y en cualquier orden). `.clear()` a mitad de test
+  = el siguiente POST va a los datos REALES. FastAPI responde un `HTTPException` como `{"detail": "..."}`. `-v` / `-s`.
+  Infografía del recorrido de pytest en `practicas/recorrido_pytest.html`.
+- Atascos: muchos de comprensión (dirección del Depends, para qué el `.clear()`, qué hace cada línea del test); renombró las
+  funciones de la app con `test_` (confunde el prefijo); intentó encadenar tests que dependían del anterior; copió el formato
+  del archivo JSON como si fuera el de la API; `.clear()` en mitad del test. Pidió varias veces el código hecho (se le dio el
+  diccionario del caso 1 y el assert de la respuesta esperada).
+- Fortalezas: explicó con sus palabras lo que hace cada línea; razonó la limpieza del archivo; propuso él el test del caso
+  límite (pegada).
+- Dudas para la próxima: ninguna abierta. Arrancar con los pendientes pequeños y elegir la siguiente capacidad.
+
+### 2026-10-23 / 24 — Limpieza de tests + elección de capacidad + dominio de "alta de pista"
+- Hecho: pendientes de tests cerrados y mergeados. Razonó la siguiente capacidad (consultar/cancelar reutilizan lo hecho;
+  cancelar exige identificar una reserva → consultar primero; consultar necesita la lista de pistas → alta de pista primero,
+  "para practicar"). Diseñó por capas, encontró la regla (número repetido) y escribió `crear_pista` + 2 tests.
+- Aprendió: el dominio RECIBE los datos, no los muestra ni los pide (su README lo prohíbe); un parámetro es un "apodo" de lo
+  que pasa quien llama (y por eso el `append` modifica la lista del orquestador); el `else` dentro del bucle (misma trampa
+  que en `choca_con_existentes`); `in` + igualdad de dataclass vs comparar `.numero` explícito; `assert` (condición verdadera)
+  vs `pytest.raises` (se espera el error); los tests del dominio van en `test_dominio.py`, los de la puerta en `test_endpoint.py`;
+  renombrar con F2 en VS Code (Cmd+Shift+L partió `respuesta_esperada`).
+- Atascos: renombró la cosa equivocada (la cafetera como `respuesta`); propuso una función de dominio que mostraba y pedía datos;
+  metió los tests de pista en `test_endpoint.py`; pidió el código hecho varias veces (se le dio el test 1 de pista).
+- **Petición nueva (en CLAUDE.md):** explicar SIEMPRE el porqué de cada cosa.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -180,12 +215,15 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Endpoint FastAPI completo: router + cableado, traducir entrada Pydantic → objeto de dominio, llamar al orquestador, y traducir el error de dominio a HTTP (`try/except ValueError` + `raise HTTPException(409)`).
 - [x] Molde de salida (`...Out` + `response_model`): traducir dominio → salida en el borde; no exponer datos internos (id, rol).
 - [x] Pydantic se construye solo con argumentos con nombre (`campo=valor`); dataclass admite también posición.
+- [x] Tests de endpoint con `TestClient` + `dependency_overrides`: inyectar una ruta de prueba, resetear el archivo, tests independientes.
 - [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
 
 - Tiende a empezar por los OBJETOS/piezas en vez de por capacidades/capas.
 - Tiende a nombrar por la tecnología (frontend, bbdd) en vez de por el rol (interfaz, persistencia).
+- Prefijo `test_` solo para funciones que SON tests (no para las piezas que usan, ni para la app).
+- Tests que dependen del anterior: cada test monta su escenario.
 - Confunde los dos sitios de `Depends` (decorador vs. parámetro) — repasar hasta que salga solo.
 - Comillas vs. variable: `"RUTA"` (texto) vs `RUTA` (valor).
 - Enseña código sin probarlo antes: pedirle que lo ejecute/pruebe él antes de pasarlo a revisión.
