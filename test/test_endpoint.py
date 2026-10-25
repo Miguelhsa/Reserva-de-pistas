@@ -3,6 +3,7 @@ from interfaz.app import app
 from interfaz.routers.reservas import get_ruta
 from persistencia.repositorio import guardar
 
+
 cliente = TestClient(app)
 
 datos_reserva = {
@@ -45,6 +46,7 @@ datos_reserva_solapa = {
     "fecha_fin": "2026-10-12T21:00:00",
 }
 RUTA_PRUEBA = "test_reservas.json"
+RUTA_RESERVAS = "test_pistas.json"
 
 def get_ruta_test() -> str:
     return RUTA_PRUEBA
@@ -76,3 +78,5 @@ def test_reserva_solapa():
     assert respuesta.status_code == 409
     assert respuesta.json() == {"detail":"Esa franja ya esta reservada"}
     app.dependency_overrides.clear()
+
+

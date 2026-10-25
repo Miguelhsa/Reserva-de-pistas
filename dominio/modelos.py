@@ -38,3 +38,10 @@ def crear_reserva(nueva,existentes):
     else:
         existentes.append(nueva)
         return nueva
+
+def crear_pista(nueva:Pista, existentes:list[Pista]) -> Pista:
+    for pista_existente in existentes:
+        if nueva.numero == pista_existente.numero:
+            raise ValueError("pista existente")
+    existentes.append(nueva)
+    return nueva

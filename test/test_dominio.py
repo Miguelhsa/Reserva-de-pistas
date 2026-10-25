@@ -1,7 +1,6 @@
-from dominio.modelos import Pista, Usuario, Reserva
+from dominio.modelos import Pista, Usuario, Reserva, crear_reserva, crear_pista
 from datetime import datetime
 import pytest
-from dominio.modelos import crear_reserva
 
 #cree dos reservas de la misma pista que se pisan (como las que montabas en el REPL),
 #llame a a.se_solapa_con(b),
@@ -25,3 +24,20 @@ def test_crear_reserva():
 
     with pytest.raises(ValueError):
         crear_reserva(reserva_3,[reserva_1,reserva_2])
+
+def test_crear_pista():
+    existentes = [Pista(1),Pista(2)]
+    nueva = Pista(3)
+
+    crear_pista(nueva, existentes)
+    #estoy comprobando que nueva esta en existentes
+    assert nueva in existentes
+
+def test_crear_pista_error():
+    existentes = [Pista(1),Pista(2)]
+    nueva = Pista(2)
+
+    with pytest.raises(ValueError):
+        crear_pista(nueva, existentes)
+
+    assert len(existentes) == 2
