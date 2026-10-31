@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-24.
+- **Última sesión:** 2026-10-31.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -41,8 +41,21 @@ vive en `README.md`; aquí va el "por dónde vamos".
   - Dominio HECHO: `crear_pista(nueva: Pista, existentes: list[Pista]) -> Pista` (bucle comparando `.numero`, `append` FUERA
     del bucle, devuelve la nueva). Tests en `test_dominio.py`: número nuevo (`assert nueva in existentes`) y repetido
     (`pytest.raises`). 8 passed.
-  - SIGUIENTE: persistencia de pistas. Pregunta abierta: ¿mismo `repositorio.py` o archivo nuevo?, ¿cómo nombrar las
-    funciones si ya existen `guardar`/`cargar`? Luego orquestador → router `/pista` (+moldes, include_router) → tests endpoint.
+  - Dominio mergeado a `main` (PR). Rama actual: `feature/persistencia-pistas` (sin commitear).
+  - Renombradas `guardar`/`cargar` → `guardar_reserva`/`cargar_reserva` (en repositorio, orquestador y test_endpoint).
+  - Persistencia de pistas HECHA en `repositorio.py`: `guardar_pista` (lista → `[asdict(p) for p in ...]` → JSON) y
+    `cargar_pista` (JSON → `Pista(p["numero"])`). Round-trip verificado en el REPL (`existentes == cargadas` → True).
+  - Pendiente pequeño: nombres en plural (`pista` es una lista en las dos funciones), tipar parámetros (`ruta: str`,
+    `list[Pista]`), errata "parar"→"pasar"; borrar `prueba_pistas.json`; revisar `RUTA_RESERVAS = "test_pistas.json"` en
+    test_endpoint (nombre confuso).
+  - TEST DE PERSISTENCIA HECHO (2026-10-31, sin commitear): `test/test_persistencia.py` →
+    `test_pistas_guardadas_se_cargan_iguales` (prepara `pistas_originales` = 2 `Pista` dentro del test → `guardar_pista` →
+    `assert pistas_originales == cargar_pista(RUTA_PRUEBA)` → limpia con `guardar_pista([])`). `RUTA_PRUEBA =
+    "test_persistencia.json"` (en `.gitignore`). Todos los tests en verde.
+  - MAPA VISUAL del proyecto: https://claude.ai/artifact/FPir8t3bkExdpTraSoP7nd (copia en `MAPA.html`). Se actualiza con cada pieza.
+  - SIGUIENTE: (1) commit + push de la rama `feature/persistencia-pistas` + PR (incluye `MAPA.html`; borrar antes
+    `prueba_pistas.json`). (2) ORQUESTADOR `dar_de_alta_pista` (cargar_pista → crear_pista → guardar_pista) — que razone él
+    dónde vive y su firma. Luego router `/pista` → tests endpoint.
 
 ## Bitácora
 
@@ -192,6 +205,32 @@ vive en `README.md`; aquí va el "por dónde vamos".
   metió los tests de pista en `test_endpoint.py`; pidió el código hecho varias veces (se le dio el test 1 de pista).
 - **Petición nueva (en CLAUDE.md):** explicar SIEMPRE el porqué de cada cosa.
 
+### 2026-10-25 — Comentarios en todo el código + persistencia de pistas
+- Petición nueva (en CLAUDE.md): todo el código comentado (qué hace cada función y cada línea). El mentor comentó lo
+  existente (solo comentarios, verificado); él comenta lo nuevo. El mentor revisa también los comentarios.
+- Hecho: PR del dominio de pistas mergeado; renombrado `guardar`/`cargar` a `_reserva`; `guardar_pista` y `cargar_pista`
+  escritas y comentadas por él. Corrigió `[asdict(pista)]` (convertía una sola) → comprensión sobre la lista.
+- Aprendió: `uv run python` = Python y paquetes del `.venv` del proyecto, desde la raíz; el REPL empieza vacío (hay que
+  importar; `NameError`); una función sin `return` devuelve `None` → `guardar(...) == cargar(...)` da False; comparar la
+  lista original con la cargada → True. Un comentario que no coincide con el código es peor que ninguno.
+- Dudas para la próxima: ninguna. Convertir el round-trip del REPL en test de pytest.
+
+### 2026-10-31 — Test de persistencia de pistas (round-trip) + MAPA VISUAL interactivo
+- Petición nueva (en CLAUDE.md, para TODOS los proyectos): mapa visual interactivo (artefacto HTML) con capas, flujos
+  animados, dependencias y cobertura de tests; el mentor lo actualiza en cada avance. Creado el de este proyecto (28-oct).
+- Hecho: `test_pistas_guardadas_se_cargan_iguales` en `test/test_persistencia.py`, en verde junto al resto.
+- Aprendió: test de caja negra (el test de persistencia NO importa `json`/`asdict`: son tripas del repositorio); un test,
+  una capa (no usar `crear_pista` en el test de persistencia); `[ ]` lista vs `{ }` dict/conjunto (claves de dict repetidas
+  se pisan); leer la traza de abajo arriba hasta la primera línea propia (petó en `repositorio.py` pero el fallo estaba en el
+  test); sin `assert` la comparación se tira y el test pasa siempre; hacer fallar el test a propósito para ver que PUEDE
+  fallar (añadió el `assert` él solo); `"w"` ya vacía el archivo (el reset previo sobra); dos elementos para pillar el bug
+  "solo guarda uno".
+- Atascos: importó primero `json`/`asdict` y luego `crear_pista` en vez de la clase `Pista` (molde vs función); errata en
+  el nombre del archivo (`perisistencia`) vs `.gitignore`; preparó un dict con clave repetida en vez de `list[Pista]`;
+  enseñó código sin ejecutarlo. Se saturó con la explicación de la traza en tabla → funcionó ir idea a idea con analogía
+  (almacén/carrito/cajas). Nombres: pidió que los cambiara el mentor (se cambiaron solo nombres y comentarios).
+- Dudas para la próxima: ninguna. Empezar por el commit/PR de la rama y luego el orquestador de pistas.
+
 ## Conceptos afianzados (demostrados, no solo leídos)
 
 - [x] Separación en capas y el "qué hace / qué tiene prohibido" de cada una.
@@ -216,9 +255,13 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - [x] Molde de salida (`...Out` + `response_model`): traducir dominio → salida en el borde; no exponer datos internos (id, rol).
 - [x] Pydantic se construye solo con argumentos con nombre (`campo=valor`); dataclass admite también posición.
 - [x] Tests de endpoint con `TestClient` + `dependency_overrides`: inyectar una ruta de prueba, resetear el archivo, tests independientes.
+- [x] Test de persistencia como caja negra (round-trip preparar → actuar → comprobar con `assert`); comprobar que un test PUEDE fallar.
 - [x] Testing con pytest: archivos `test_*.py` y funciones `def test_*()` (sin parámetros, o pytest los toma por fixtures); `assert` / `assert not`; `pytest.raises` para afirmar que se lanza una excepción; `conftest.py` vacío en la raíz resuelve el `ModuleNotFoundError` (pone la raíz en el path); cubrir caso positivo Y negativo (+ límite).
 
 ## A vigilar (puntos flacos crónicos)
+
+- `[ ]` (lista) vs `{ }` (dict/conjunto): repetido el 2026-10-31.
+- Importar la función cuando necesita la clase-molde (`crear_pista` vs `Pista`); variables con Mayúscula parecen clases.
 
 - Tiende a empezar por los OBJETOS/piezas en vez de por capacidades/capas.
 - Tiende a nombrar por la tecnología (frontend, bbdd) en vez de por el rol (interfaz, persistencia).
