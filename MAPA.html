@@ -1,0 +1,320 @@
+<title>Mapa de Reservas de Pista</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: pista de pádel vista desde arriba — carriles verticales = capas; la "pelota" es el dato que viaja */
+:root{
+  --bg:#EEF3F1; --surface:#FFFFFF; --ink:#13232E; --muted:#5A6B74; --line:#C9D6D3;
+  --court:#1D4F86; --court-soft:#DCE7F3; --turf:#2F7A55; --turf-soft:#DDEFE5;
+  --ball:#C9DB2E; --ball-ink:#3B4400; --warn:#B4441F; --warn-soft:#F6E1D8; --lane:#F7FAF9;
+  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1820; --surface:#14232D; --ink:#E6EEF0; --muted:#93A6AE; --line:#2A3D48;
+  --court:#7FB0E8; --court-soft:#1B324A; --turf:#6CC79A; --turf-soft:#173528;
+  --ball:#D7E84A; --ball-ink:#222800; --warn:#F08A64; --warn-soft:#3A2119; --lane:#112029; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1820; --surface:#14232D; --ink:#E6EEF0; --muted:#93A6AE; --line:#2A3D48;
+  --court:#7FB0E8; --court-soft:#1B324A; --turf:#6CC79A; --turf-soft:#173528;
+  --ball:#D7E84A; --ball-ink:#222800; --warn:#F08A64; --warn-soft:#3A2119; --lane:#112029; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+header h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,40px);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.01em}
+header p{margin:8px 0 0;color:var(--muted);max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--turf);margin-bottom:6px}
+.track{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.track .lbl{font-weight:600;margin-right:4px}
+.chip{font-family:var(--mono);font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.chip.done{background:var(--turf-soft);border-color:transparent;color:var(--turf)}
+.chip.here{background:var(--ball);border-color:transparent;color:var(--ball-ink);font-weight:500}
+.sep{color:var(--muted)}
+.modes{display:flex;flex-wrap:wrap;gap:8px}
+.modes button{font-family:var(--body);font-size:14px;font-weight:500;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--court);border-color:var(--court);color:var(--surface)}
+button:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:680px;height:auto}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel .count{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.panel h2{font-family:var(--display);font-weight:600;font-size:20px;line-height:1.2;margin:0;text-wrap:balance}
+.panel p{margin:0}
+.why{border-left:3px solid var(--turf);padding:2px 0 2px 10px;color:var(--ink)}
+.why b{color:var(--turf)}
+.data{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.data code{font-family:var(--mono);background:var(--ball);color:var(--ball-ink);padding:2px 8px;border-radius:6px;font-size:13px}
+.layer{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--court-soft);color:var(--court);align-self:flex-start}
+.status{font-size:13px;padding:6px 10px;border-radius:6px}
+.status.pend{background:var(--warn-soft);color:var(--warn)}
+.status.ok{background:var(--turf-soft);color:var(--turf)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.controls button{flex:1;min-width:80px;font-family:var(--body);font-size:14px;font-weight:500;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--lane);color:var(--ink);cursor:pointer}
+.controls button.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.controls button:disabled{opacity:.4;cursor:default}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:22px;height:12px;border-radius:3px;border:1.5px solid var(--court);background:var(--surface)}
+.sw.p{border-style:dashed;border-color:var(--muted)}
+.sw.b{width:12px;height:12px;border-radius:50%;background:var(--ball);border:none}
+/* SVG */
+.lane-bg{fill:var(--lane);stroke:var(--line)}
+.lane-t{font-family:var(--mono);font-size:12px;letter-spacing:.08em;fill:var(--muted);text-transform:uppercase}
+.lane-r{font-family:var(--body);font-size:11px;fill:var(--muted)}
+.node rect{fill:var(--surface);stroke:var(--court);stroke-width:1.5;transition:fill .25s,stroke-width .25s}
+.node.pending rect{stroke:var(--muted);stroke-dasharray:5 4}
+.node.disk rect{stroke:var(--turf)}
+.node.ext rect{stroke:var(--ink)}
+.node .t{font-family:var(--mono);font-size:13px;font-weight:500;fill:var(--ink)}
+.node .s{font-family:var(--body);font-size:11.5px;fill:var(--muted)}
+.node.on rect{fill:var(--court-soft);stroke-width:3}
+.node.on.disk rect{fill:var(--turf-soft)}
+.node.err rect{fill:var(--warn-soft);stroke:var(--warn);stroke-width:3}
+.node.dim{opacity:.35}
+.trail{stroke:var(--court);stroke-width:2;fill:none;marker-end:url(#arr)}
+.trail.old{stroke:var(--line)}
+.trail.bad{stroke:var(--warn)}
+.dep{stroke:var(--ink);stroke-width:3;fill:none;marker-end:url(#arrInk)}
+.dep-t{font-family:var(--body);font-size:12.5px;font-weight:600;fill:var(--ink)}
+.box-hl{fill:none;stroke:var(--ball);stroke-width:3;stroke-dasharray:8 5}
+.box-t{font-family:var(--mono);font-size:12px;font-weight:500}
+.ball{fill:var(--ball);stroke:var(--ball-ink);stroke-width:1.5}
+.ball-l{font-family:var(--mono);font-size:12px;font-weight:500;fill:var(--ball-ink)}
+.ball-lbg{fill:var(--ball)}
+.ar{fill:var(--court)} .ar-ink{fill:var(--ink)}
+footer{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.node rect{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">reservas-pistas · mapa vivo</div>
+    <h1>Cómo viaja un dato por tu backend de pádel</h1>
+    <p>Tres capas: <b>interfaz → dominio ← persistencia</b>. Elige un flujo y avanza paso a paso: la pelota amarilla es el dato, y en cada paso verás qué forma tiene y por qué está en esa capa.</p>
+  </header>
+
+  <div class="track" aria-label="Progreso de la capacidad alta de pista">
+    <span class="lbl">Alta de pista:</span>
+    <span class="chip done">dominio ✓</span><span class="sep">→</span>
+    <span class="chip done">persistencia ✓</span><span class="sep">→</span>
+    <span class="chip done">test persistencia ✓</span><span class="sep">→</span>
+    <span class="chip here">orquestador · estás aquí</span><span class="sep">→</span>
+    <span class="chip">router /pista</span><span class="sep">→</span>
+    <span class="chip">tests endpoint</span>
+  </div>
+
+  <div class="modes" role="group" aria-label="Vista">
+    <button id="m-ok" data-mode="ok" aria-pressed="true">Reservar · franja libre</button>
+    <button id="m-409" data-mode="choca">Reservar · franja ocupada</button>
+    <button id="m-pista" data-mode="pista">Alta de pista (en obra)</button>
+    <button id="m-deps" data-mode="deps">Dependencias (imports)</button>
+    <button id="m-tests" data-mode="tests">¿Qué prueba cada test?</button>
+  </div>
+
+  <div class="stage">
+    <div class="diagram"><svg id="svg" viewBox="0 0 1100 600" role="img" aria-label="Diagrama de capas del proyecto"></svg></div>
+    <aside class="panel" aria-live="polite">
+      <div class="count" id="count"></div>
+      <div class="layer" id="layer"></div>
+      <h2 id="title"></h2>
+      <p id="text"></p>
+      <p class="why" id="why"></p>
+      <div class="data" id="data"></div>
+      <div id="status"></div>
+      <div class="controls">
+        <button id="prev">← Anterior</button>
+        <button id="play" class="primary">▶ Reproducir</button>
+        <button id="next">Siguiente →</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="legend">
+    <span><i class="sw"></i> existe y funciona</span>
+    <span><i class="sw p"></i> planificado, sin construir</span>
+    <span><i class="sw b"></i> el dato que viaja</span>
+  </div>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 31 oct 2026 (test de persistencia de pistas en verde).</footer>
+</div>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+const lanes=[
+  {x:10,w:150,t:"fuera",r:"quien llama"},
+  {x:175,w:300,t:"interfaz",r:"recibe, traduce, contesta"},
+  {x:490,w:250,t:"dominio",r:"reglas; no toca archivos"},
+  {x:755,w:190,t:"persistencia",r:"solo guarda y lee"},
+  {x:960,w:130,t:"disco",r:"archivos JSON"}
+];
+const N={
+  cliente:{x:20,y:250,w:130,h:64,t:"Cliente",s:"/docs · Postman",k:"ext"},
+  app:{x:190,y:62,w:270,h:48,t:"app.py",s:"crea la app y enchufa routers"},
+  router:{x:190,y:150,w:270,h:78,t:"POST /reserva",s:"routers/reservas.py · solicitar_reserva",s2:"moldes ReservaIn / ReservaOut"},
+  getruta:{x:190,y:256,w:270,h:44,t:"get_ruta()",s:"entrega la ruta vía Depends"},
+  orq:{x:190,y:330,w:270,h:60,t:"reservar()",s:"orquestador.py · coordina el flujo"},
+  routerPista:{x:190,y:440,w:270,h:48,t:"POST /pista",s:"router de pistas",k:"pending"},
+  orqPista:{x:190,y:515,w:270,h:52,t:"dar_de_alta_pista()",s:"orquestador de pistas",k:"pending"},
+  modelos:{x:505,y:62,w:220,h:64,t:"modelos.py",s:"Pista · Usuario · Reserva",s2:"dataclasses"},
+  crearRes:{x:505,y:190,w:220,h:78,t:"crear_reserva()",s:"choca_con_existentes()",s2:"→ se_solapa_con()"},
+  crearPista:{x:505,y:470,w:220,h:72,t:"crear_pista()",s:"número repetido →",s2:"ValueError"},
+  cargarRes:{x:770,y:170,w:160,h:48,t:"cargar_reserva()",s:"JSON → objetos"},
+  guardarRes:{x:770,y:260,w:160,h:48,t:"guardar_reserva()",s:"objetos → JSON"},
+  cargarPista:{x:770,y:440,w:160,h:48,t:"cargar_pista()",s:"JSON → objetos"},
+  guardarPista:{x:770,y:520,w:160,h:48,t:"guardar_pista()",s:"objetos → JSON"},
+  jsonRes:{x:970,y:210,w:110,h:60,t:"reservas.json",s:"(tests: test_",s2:"reservas.json)",k:"disk"},
+  jsonPista:{x:970,y:475,w:110,h:60,t:"pistas",s:"archivo JSON",s2:"(nombre por fijar)",k:"disk"}
+};
+
+const W="interfaz",D="dominio",P="persistencia",F="fuera";
+const commonStart=[
+  {f:"cliente",to:"router",d:"JSON (texto)",L:W,title:"Llega la petición",text:"El cliente manda por HTTP un JSON con la pista, los usuarios y las dos fechas.",why:"Fuera de tu programa todo es texto: HTTP no sabe qué es un objeto de Python."},
+  {f:"router",to:"router",d:"ReservaIn",L:W,title:"Pydantic valida en el borde",text:"FastAPI convierte el JSON en un ReservaIn. Si falta un campo o un tipo no cuadra, responde 422 y la petición no pasa de aquí.",why:"Validar en la puerta evita que entre basura al dominio. Es el portero de la discoteca."},
+  {f:"router",to:"router",d:"Reserva (dataclass)",L:W,title:"Traducción: molde de entrada → dominio",text:"El router construye una Reserva del dominio con los datos de ReservaIn.",why:"Así el dominio no sabe que existe Pydantic ni FastAPI. Si mañana cambias de framework, el dominio no se toca."},
+  {f:"getruta",to:"router",d:"ruta: str",L:W,title:"Depends entrega la ruta del archivo",text:"El endpoint no lleva la ruta escrita dentro: se la pide a get_ruta() a través de Depends.",why:"En los tests, dependency_overrides cambia get_ruta por otra función y apunta a test_reservas.json. Así tus reservas reales nunca se ensucian."},
+  {f:"router",to:"orq",d:"Reserva + ruta",L:W,title:"El router delega en el orquestador",text:"Llama a reservar(nueva, ruta). El router no decide nada de negocio.",why:"Si cada endpoint coordinara sus pasos, repetirías el flujo en cada puerta (web, Telegram, Streamlit…). El orquestador lo hace una sola vez."},
+  {f:"orq",to:"cargarRes",d:"ruta",L:P,title:"Pide las reservas existentes",text:"El orquestador llama a cargar_reserva(ruta).",why:"Para saber si la nueva choca, primero hay que conocer las que ya existen."},
+  {f:"cargarRes",to:"jsonRes",d:"lee",L:P,title:"Lectura del disco",text:"Se abre reservas.json en modo lectura y json.load devuelve una lista de diccionarios.",why:"La persistencia es la única capa que toca archivos. Si mañana usas Postgres, solo cambia esta columna."},
+  {f:"jsonRes",to:"orq",d:"list[Reserva]",L:P,title:"De diccionarios a objetos",text:"cargar_reserva reconstruye cada Usuario, Pista y Reserva y convierte las fechas con datetime.fromisoformat. Devuelve list[Reserva].",why:"El dominio trabaja con objetos, no con diccionarios: necesita poder usar .fecha_inicio y se_solapa_con()."},
+  {f:"orq",to:"crearRes",d:"nueva + list[Reserva]",L:D,title:"El dominio aplica la regla",text:"crear_reserva(nueva, existentes) recorre la lista con choca_con_existentes, que pregunta a cada una se_solapa_con(nueva).",why:"La regla del negocio (no solapar franjas) vive en un solo sitio y no sabe de HTTP ni de archivos. Por eso se puede probar sola en test_dominio."}
+];
+const flowOk=[...commonStart,
+  {f:"crearRes",to:"orq",d:"list[Reserva] + nueva",L:D,title:"No choca: se añade",text:"Ninguna se solapa, así que la nueva se añade a la lista (append) y la función devuelve.",why:"El dominio cambia la lista en memoria y nada más. No guarda: guardar es cosa de la persistencia."},
+  {f:"orq",to:"guardarRes",d:"list[Reserva]",L:P,title:"Se guarda la lista completa",text:"El orquestador pasa la lista actualizada a guardar_reserva(reservas, ruta).",why:"El orden importa: cargar → decidir → guardar. Si guardaras antes de decidir, podrías escribir una reserva que choca."},
+  {f:"guardarRes",to:"jsonRes",d:"JSON (texto)",L:P,title:"Escritura en disco",text:"asdict convierte cada Reserva en diccionario y json.dump reescribe el archivo entero; las fechas pasan a texto con default=str.",why:"JSON no entiende objetos ni datetime: hay que bajarlos a texto. Es el viaje inverso de cargar_reserva."},
+  {f:"orq",to:"router",d:"Reserva",L:W,title:"Vuelta a la puerta",text:"reservar() termina sin errores y el control vuelve al endpoint.",why:"El flujo de datos va y vuelve, pero las dependencias siguen apuntando hacia el dominio. No confundas flujo con dependencia."},
+  {f:"router",to:"cliente",d:"ReservaOut → 200",L:W,title:"Traducción de salida y respuesta",text:"El router convierte la Reserva en ReservaOut (sin id ni rol) y FastAPI responde 200 con ese JSON. response_model hace de contrato.",why:"El molde de salida decide qué se deja ver. Sin él, cualquier campo nuevo del dominio saldría a la calle sin querer."}
+];
+const flowBad=[...commonStart,
+  {f:"crearRes",to:"crearRes",d:"ValueError",L:D,err:true,title:"Choca: el dominio dice que no",text:"se_solapa_con da True con una existente, y crear_reserva lanza ValueError.",why:"El dominio no sabe qué es un 409: solo dice «esto rompe la regla». Cada puerta traduce ese «no» a su idioma."},
+  {f:"crearRes",to:"orq",d:"ValueError ↑",L:D,err:true,title:"La excepción sube",text:"reservar() no la captura: la excepción corta el flujo y sube hacia quien llamó.",why:"Como el error salta antes de guardar_reserva, el archivo no se toca. La reserva inválida nunca llega al disco."},
+  {f:"orq",to:"router",d:"ValueError ↑",L:W,err:true,title:"El router la atrapa",text:"En solicitar_reserva, el try/except ValueError la recoge.",why:"Traducir errores es trabajo de la interfaz: es la única capa que sabe que existe HTTP."},
+  {f:"router",to:"cliente",d:"409",L:W,err:true,title:"Respuesta 409 Conflict",text:"raise HTTPException(409, «Esa franja ya esta reservada»). El cliente recibe el código y el mensaje.",why:"409 significa «choca con el estado actual». Tu test test_reserva_solapa comprueba exactamente esto."}
+];
+const flowPista=[
+  {f:"cliente",to:"routerPista",d:"JSON {numero}",L:W,pend:true,title:"Petición de alta",text:"Un administrador pedirá dar de alta una pista con su número.",why:"Es la misma puerta que /reserva, pero con otro recurso. Repetirás el patrón que ya dominas."},
+  {f:"routerPista",to:"orqPista",d:"Pista + ruta",L:W,pend:true,title:"Router → orquestador",text:"El router traducirá la entrada a una Pista del dominio y delegará.",why:"Mismo motivo que en reservas: el router no decide nada de negocio."},
+  {f:"orqPista",to:"cargarPista",d:"ruta",L:P,title:"Cargar las pistas existentes",text:"cargar_pista(ruta) lee el archivo y reconstruye cada Pista desde su número.",why:"Para comprobar si el número ya existe, primero hay que tener la lista."},
+  {f:"cargarPista",to:"jsonPista",d:"lee",L:P,title:"Lectura del disco",text:"json.load devuelve diccionarios {\"numero\": …}.",why:"Este viaje de ida y vuelta (guardar → cargar → comparar) es justo lo que va a probar tu próximo test."},
+  {f:"jsonPista",to:"orqPista",d:"list[Pista]",L:P,title:"Vuelven objetos Pista",text:"cargar_pista devuelve list[Pista].",why:"Esta ida y vuelta ya está protegida por test_pistas_guardadas_se_cargan_iguales, en test_persistencia.py."},
+  {f:"orqPista",to:"crearPista",d:"nueva + list[Pista]",L:D,title:"Regla: número único",text:"crear_pista compara .numero con cada existente. Si está libre, añade la pista con append fuera del bucle.",why:"Ya está probado en test_dominio (caso nuevo y caso repetido)."},
+  {f:"crearPista",to:"crearPista",d:"ValueError",L:D,err:true,title:"…o número repetido",text:"Si el número ya existe, lanza ValueError. La puerta lo traducirá a 409.",why:"Es el mismo patrón que en reservas: el dominio dice «no» y la interfaz elige el código HTTP."},
+  {f:"orqPista",to:"guardarPista",d:"list[Pista]",L:P,title:"Guardar la lista",text:"guardar_pista convierte cada Pista con asdict y reescribe el archivo.",why:"Cargar → decidir → guardar: el mismo orden que en reservar()."},
+  {f:"guardarPista",to:"jsonPista",d:"JSON (texto)",L:P,title:"Escritura en disco",text:"json.dump escribe la lista de diccionarios.",why:"Aquí no hace falta default=str: una Pista solo lleva un entero, y JSON ya entiende los números."},
+  {f:"orqPista",to:"routerPista",d:"Pista",L:W,pend:true,title:"Vuelta y respuesta",text:"El router responderá con un molde de salida (o 409 si se repite).",why:"Lo diseñarás tú cuando llegues aquí: ¿qué quiere ver el admin tras el alta?"},
+  {f:"routerPista",to:"cliente",d:"200 / 409",L:W,pend:true,title:"Fin del flujo",text:"El cliente recibe la pista creada o el conflicto.",why:"Cuando esto funcione, «consultar disponibilidad» ya tendrá la lista de pistas del club con la que trabajar."}
+];
+const depsStep=[{deps:true,L:"imports",title:"Quién importa a quién",text:"Las flechas negras son imports, no viajes de datos. La interfaz importa al dominio y a la persistencia; la persistencia importa al dominio para reconstruir objetos. El dominio no importa a nadie y nadie importa a la interfaz.",why:"Todas las flechas apuntan hacia el dominio, el centro estable. Por eso puedes cambiar FastAPI o JSON sin tocar las reglas del negocio. Ojo: tu README solo dibuja interfaz → dominio ← persistencia, pero el orquestador también importa a la persistencia. ¿Lo añadirías?"}];
+const testSteps=[
+  {hl:["modelos","crearRes","crearPista"],box:"test_dominio.py · 5 tests",L:"tests",title:"test_dominio.py",text:"Prueba solo las reglas: se_solapa_con (sí y no), crear_reserva, crear_pista (nuevo y repetido).",why:"Sin archivos ni HTTP. Son los tests más rápidos y los más fiables, porque el dominio no depende de nada.",st:"ok"},
+  {hl:["cliente","router","getruta","orq","crearRes","cargarRes","guardarRes","jsonRes"],box:"test_endpoint.py · 3 tests",L:"tests",title:"test_endpoint.py",text:"TestClient hace de cliente y recorre la cadena entera de /reserva: libre → 200, pegada → 200, solapa → 409. dependency_overrides cambia la ruta por test_reservas.json.",why:"Comprueba que todas las piezas encajan. Si falla, el fallo puede estar en cualquier capa: por eso conviene tener también tests por capa.",st:"ok"},
+  {hl:["cargarPista","guardarPista","jsonPista"],box:"test_persistencia.py · 1 test",L:"tests",title:"test_persistencia.py",text:"test_pistas_guardadas_se_cargan_iguales: prepara pistas_originales (dos Pista), las guarda en test_persistencia.json, las carga y hace assert de que salen iguales. Al final deja el archivo vacío.",why:"Prueba solo la columna de persistencia, sin HTTP y sin reglas. Si mañana cambias JSON por Postgres, este test te dice al momento si la ida y vuelta sigue funcionando. Usa dos pistas para que un fallo que guarde solo una se note.",st:"ok"}
+];
+const FLOWS={ok:flowOk,choca:flowBad,pista:flowPista,deps:depsStep,tests:testSteps};
+
+const svg=document.getElementById("svg");
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+function txt(parent,x,y,cls,s){const t=el("text",{x,y,class:cls},parent);t.textContent=s;return t;}
+
+const defs=el("defs",{});
+const m1=el("marker",{id:"arr",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse"},defs);el("path",{d:"M0,0 L10,5 L0,10 z",class:"ar"},m1);
+const m2=el("marker",{id:"arrInk",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"6",markerHeight:"6",orient:"auto-start-reverse"},defs);el("path",{d:"M0,0 L10,5 L0,10 z",class:"ar-ink"},m2);
+
+lanes.forEach(l=>{el("rect",{x:l.x,y:8,width:l.w,height:584,rx:10,class:"lane-bg"});txt(svg,l.x+12,30,"lane-t",l.t);txt(svg,l.x+12,46,"lane-r",l.r);});
+const layerTrails=el("g",{});
+const nodeG={};
+for(const id in N){const n=N[id];const g=el("g",{class:"node "+(n.k||"")});
+  el("rect",{x:n.x,y:n.y,width:n.w,height:n.h,rx:8},g);
+  txt(g,n.x+12,n.y+20,"t",n.t);
+  if(n.s)txt(g,n.x+12,n.y+37,"s",n.s);
+  if(n.s2)txt(g,n.x+12,n.y+53,"s",n.s2);
+  nodeG[id]=g;}
+const overlay=el("g",{});
+const ballG=el("g",{});ballG.style.display="none";
+const lblBg=el("rect",{rx:5,class:"ball-lbg",height:20},ballG);
+const lbl=el("text",{class:"ball-l"},ballG);
+const ball=el("circle",{r:9,class:"ball"},ballG);
+
+const C=id=>({x:N[id].x+N[id].w/2,y:N[id].y+N[id].h/2});
+function edge(id,tx,ty){const n=N[id],c=C(id),dx=tx-c.x,dy=ty-c.y;if(!dx&&!dy)return c;
+  const sx=(n.w/2)/Math.abs(dx||1e-9),sy=(n.h/2)/Math.abs(dy||1e-9),s=Math.min(sx,sy);return{x:c.x+dx*s,y:c.y+dy*s};}
+function seg(a,b){const ca=C(a),cb=C(b);return[edge(a,cb.x,cb.y),edge(b,ca.x,ca.y)];}
+
+let mode="ok",idx=0,playing=false,timer=null,anim=null;
+function placeBall(x,y,label){ballG.style.display="";ball.setAttribute("cx",x);ball.setAttribute("cy",y);
+  lbl.textContent=label;const w=label.length*7.4+14;lbl.setAttribute("x",x-w/2+7);lbl.setAttribute("y",y-17);
+  lblBg.setAttribute("x",x-w/2);lblBg.setAttribute("y",y-31);lblBg.setAttribute("width",w);}
+
+function render(){
+  const steps=FLOWS[mode];const s=steps[idx];
+  cancelAnimationFrame(anim);
+  Object.values(nodeG).forEach(g=>g.classList.remove("on","err","dim"));
+  layerTrails.innerHTML="";overlay.innerHTML="";ballG.style.display="none";
+  document.getElementById("count").textContent=steps.length>1?`Paso ${idx+1} de ${steps.length}`:"Vista fija";
+  document.getElementById("layer").textContent=s.L;
+  document.getElementById("title").textContent=s.title;
+  document.getElementById("text").textContent=s.text;
+  document.getElementById("why").innerHTML="<b>Por qué:</b> "+esc(s.why);
+  const data=document.getElementById("data");data.innerHTML=s.d?`Viaja: <code>${esc(s.d)}</code>`:"";
+  const st=document.getElementById("status");
+  st.innerHTML=s.pend?'<div class="status pend">Pieza planificada, todavía sin construir.</div>':(s.st==="pend"?'<div class="status pend">Siguiente paso: lo escribes tú.</div>':(s.st==="ok"?'<div class="status ok">Hecho y en verde.</div>':""));
+  document.getElementById("prev").disabled=idx===0;document.getElementById("next").disabled=idx===steps.length-1;
+  document.getElementById("play").disabled=steps.length<2;
+  if(s.deps){drawDeps();return;}
+  if(s.hl){Object.keys(nodeG).forEach(k=>{if(!s.hl.includes(k))nodeG[k].classList.add("dim");else nodeG[k].classList.add("on");});drawBox(s.hl,s.box);return;}
+  // trails of previous steps
+  for(let i=0;i<idx;i++){const p=steps[i];if(p.f!==p.to){const[a,b]=seg(p.f,p.to);el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:"trail old"},layerTrails);}}
+  [s.f,s.to].forEach(k=>nodeG[k].classList.add(s.err?"err":"on"));
+  if(s.f===s.to){const c=C(s.f);placeBall(c.x+N[s.f].w/2-14,N[s.f].y+4,s.d);if(!reduce)pulse();return;}
+  const[a,b]=seg(s.f,s.to);
+  el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:"trail"+(s.err?" bad":"")},layerTrails);
+  if(reduce){placeBall(b.x,b.y,s.d);return;}
+  const t0=performance.now(),dur=900;
+  (function step(t){const k=Math.min(1,(t-t0)/dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    placeBall(a.x+(b.x-a.x)*e,a.y+(b.y-a.y)*e,s.d);if(k<1)anim=requestAnimationFrame(step);})(t0);
+}
+function pulse(){const t0=performance.now();(function f(t){const r=9+3*Math.sin((t-t0)/140);ball.setAttribute("r",r);if(t-t0<1100)anim=requestAnimationFrame(f);else ball.setAttribute("r",9);})(t0);}
+function drawDeps(){
+  ["modelos","crearRes","crearPista"].forEach(k=>nodeG[k].classList.add("on"));
+  const arrows=[
+    {x1:475,y1:120,x2:500,y2:120,l:"importa",lx:452,ly:108},
+    {x1:755,y1:100,x2:730,y2:100,l:"importa",lx:722,ly:88},
+    {x1:475,y1:300,x2:750,y2:300,l:"orquestador importa repositorio",lx:520,ly:290,curve:true}
+  ];
+  el("path",{d:"M465 140 L500 140",class:"dep"},overlay);
+  el("path",{d:"M765 140 L730 140",class:"dep"},overlay);
+  el("path",{d:"M460 360 C 600 420, 650 420, 765 300",class:"dep"},overlay);
+  const t1=txt(overlay,380,170,"dep-t","interfaz → dominio");
+  const t2=txt(overlay,745,160,"dep-t","persistencia → dominio");
+  const t3=txt(overlay,520,430,"dep-t","interfaz → persistencia");
+  [t1,t2,t3].forEach(t=>t.setAttribute("paint-order","stroke"));
+}
+function drawBox(ids,label){
+  let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;ids.forEach(k=>{const n=N[k];x1=Math.min(x1,n.x);y1=Math.min(y1,n.y);x2=Math.max(x2,n.x+n.w);y2=Math.max(y2,n.y+n.h);});
+  el("rect",{x:x1-8,y:y1-8,width:x2-x1+16,height:y2-y1+16,rx:12,class:"box-hl"},overlay);
+  const w=label.length*7.6+16;const ty=y1-14<56?y2+30:y1-14;
+  el("rect",{x:x1-8,y:ty-15,width:w,height:21,rx:5,class:"ball-lbg"},overlay);
+  const t=txt(overlay,x1,ty,"box-t",label);t.setAttribute("fill","var(--ball-ink)");
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function go(i){const n=FLOWS[mode].length;idx=Math.max(0,Math.min(n-1,i));render();}
+function stop(){playing=false;clearInterval(timer);document.getElementById("play").textContent="▶ Reproducir";}
+document.getElementById("prev").onclick=()=>{stop();go(idx-1);};
+document.getElementById("next").onclick=()=>{stop();go(idx+1);};
+document.getElementById("play").onclick=()=>{
+  if(playing){stop();return;}
+  playing=true;document.getElementById("play").textContent="❚❚ Pausa";
+  if(idx===FLOWS[mode].length-1)go(0);
+  timer=setInterval(()=>{if(idx>=FLOWS[mode].length-1){stop();return;}go(idx+1);},3200);
+};
+document.querySelectorAll(".modes button").forEach(b=>b.onclick=()=>{
+  stop();document.querySelectorAll(".modes button").forEach(x=>x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true");mode=b.dataset.mode;idx=0;render();});
+document.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){stop();go(idx+1);}if(e.key==="ArrowLeft"){stop();go(idx-1);}});
+render();
+</script>
