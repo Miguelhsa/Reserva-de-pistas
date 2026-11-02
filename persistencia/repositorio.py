@@ -8,7 +8,7 @@ from dominio.modelos import Pista, Usuario, Reserva
 from datetime import datetime
 
 # FUNCIÓN: guarda la lista de reservas en un archivo JSON (reescribe el archivo entero).
-def guardar_reserva(reservas,ruta) -> None:
+def guardar_reserva(reservas: list[Reserva], ruta: str) -> None:
     # Convierte cada Reserva en diccionario (JSON no entiende objetos)
     datos = [asdict(r) for r in reservas]
     # Abre el archivo para escribir ('w' lo vacía y escribe desde cero); 'with' lo cierra solo al terminar
@@ -18,7 +18,7 @@ def guardar_reserva(reservas,ruta) -> None:
 
 
 # FUNCIÓN: lee el archivo JSON y reconstruye los objetos Reserva (el viaje inverso de guardar).
-def cargar_reserva(ruta) -> list[Reserva]:
+def cargar_reserva(ruta: str) -> list[Reserva]:
     # Aquí se irán acumulando las reservas ya convertidas en objetos
     lista_reservas = []
     # Abre el archivo para leer
@@ -41,9 +41,9 @@ def cargar_reserva(ruta) -> list[Reserva]:
     return lista_reservas
 
 # Funcion: guardar la lista de pistas
-def guardar_pista(pista,ruta: str) -> None:
+def guardar_pista(pistas: list[Pista], ruta: str) -> None:
     #convierte cada pista en un diccionario
-    pistas = [asdict(p)for p in pista]
+    pistas = [asdict(p) for p in pistas]
     #Abre el archivo donde guardar ("w lo vacía y escribe desde cero); 'with' lo cierra solo al terminar")
     with open(ruta,"w") as f:
         # Escribe la lista en el archivo
@@ -53,13 +53,18 @@ def guardar_pista(pista,ruta: str) -> None:
 def cargar_pista(ruta: str) -> list[Pista]:
     #creo una lista vacia para añadir aqui las pistas
     lista_pistas = []
-    #abro el archivo donde se guardan las pistas, solo en modo lectura "r"
-    with open(ruta,"r") as f:
-        #json.load devuelve diccionarios, no objetos
-        pistas = json.load(f)#esto entrega una lista con todas las pistas
-        #bucle para parar por cada pista que es un diccionario y convertirla en pista
-        for p in pistas:
-            #reconstruyo la pista desde su numero
-            lista_pistas.append(Pista(p["numero"]))
+    #probamos a leer el archivo, pero no estamos seguros si existe
+    try:
+        #abro el archivo donde se guardan las pistas, solo en modo lectura "r"
+        with open(ruta,"r") as f:
+            #json.load devuelve diccionarios, no objetos
+            pistas = json.load(f)#esto entrega una lista con todas las pistas
+            #bucle para parar por cada pista que es un diccionario y convertirla en pista
+            for p in pistas:
+                #reconstruyo la pista desde su numero
+                lista_pistas.append(Pista(p["numero"]))
+    #Si no existe saltará un error y entrego una lista vacia
+    except FileNotFoundError:
+        return lista_pistas
     #Devuelvo el listado de objeto pistas
     return lista_pistas

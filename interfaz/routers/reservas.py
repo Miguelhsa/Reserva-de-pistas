@@ -19,6 +19,7 @@ def get_ruta() -> str:
 
 # Crea el router: sus rutas empiezan por /reserva y salen agrupadas como 'Reservas' en /docs
 router = APIRouter(prefix="/reserva",tags=["Reservas"])
+
 #En UsuarioIn id y rol son provisionales
 #Molde de entrada por el endpoint para el usuario
 class UsuarioIn(BaseModel):
@@ -55,7 +56,7 @@ class ReservaOut(BaseModel):
 # ENDPOINT POST /reserva; response_model fija el contrato de salida (lo que se ve en /docs y lo que se deja salir)
 @router.post("",response_model=ReservaOut)
 # FUNCIÓN del endpoint: recibe la reserva (ya validada por ReservaIn) y PIDE la ruta del archivo con Depends
-def solicitar_reserva(nueva_reserva: ReservaIn, ruta : str = Depends(get_ruta)):
+def solicitar_reserva(nueva_reserva: ReservaIn, ruta: str = Depends(get_ruta)) -> ReservaOut:
     #pasos:
     #Construir una pista
     #Construir una lista con los usuarios
