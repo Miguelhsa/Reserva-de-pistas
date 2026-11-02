@@ -22,17 +22,17 @@ reserva_2 = Reserva(pista_1,[usuario_2],datetime(2026,10,3,20,30),datetime(2026,
 reserva_3 = Reserva(pista_1,[usuario_2],datetime(2026,10,3,21,00),datetime(2026,10,3,22,00))
 
 # TEST: dos reservas que se pisan -> se_solapa_con debe dar True
-def test_se_solapa_con():
+def test_se_solapa_con() -> None:
     # assert: si la condición no es verdad, el test falla
     assert reserva_1.se_solapa_con(reserva_2)
 
 # TEST: dos reservas pegadas NO se pisan (caso límite) -> debe dar False
-def test_no_se_solapa_con():
+def test_no_se_solapa_con() -> None:
     # assert not: comprueba que el resultado es False
     assert not reserva_1.se_solapa_con(reserva_3)
 
 # TEST: crear una reserva que choca debe lanzar ValueError
-def test_crear_reserva():
+def test_crear_reserva() -> None:
 
     # Lo de dentro de este bloque TIENE que lanzar ValueError; si no lo lanza, el test falla
     with pytest.raises(ValueError):
@@ -40,7 +40,7 @@ def test_crear_reserva():
         crear_reserva(reserva_3,[reserva_1,reserva_2])
 
 # TEST: una pista con número nuevo se añade a la lista
-def test_crear_pista():
+def test_crear_pista() -> None:
     # Preparar: pistas que ya existen (lista hecha a mano, sin archivos)
     existentes = [Pista(1),Pista(2)]
     # La pista nueva, con un número que no está
@@ -52,7 +52,7 @@ def test_crear_pista():
     assert nueva in existentes
 
 # TEST: una pista con número repetido se rechaza
-def test_crear_pista_error():
+def test_crear_pista_error() -> None:
     # Preparar: pistas que ya existen
     existentes = [Pista(1),Pista(2)]
     # La nueva repite el número 2

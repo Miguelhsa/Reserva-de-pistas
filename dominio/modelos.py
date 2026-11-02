@@ -35,14 +35,14 @@ class Reserva:
     fecha_fin: datetime
 
     # MÉTODO: ¿esta reserva (self) se pisa con otra? Devuelve True o False.
-    def se_solapa_con(self,otra) -> bool:
+    def se_solapa_con(self, otra: Reserva) -> bool:
         #"si una función responde sí/no, devuelve la condición directamente".
         # Se pisan si es la misma pista Y cada una empieza antes de que acabe la otra (hacen falta las dos comparaciones)
         return self.pista == otra.pista and self.fecha_inicio < otra.fecha_fin and otra.fecha_inicio < self.fecha_fin
 
 
 # FUNCIÓN: ¿la reserva nueva choca con alguna de las existentes? Devuelve True o False.
-def choca_con_existentes(nueva,existentes) -> bool:
+def choca_con_existentes(nueva: Reserva, existentes: list[Reserva]) -> bool:
 
     # Recorre las reservas que ya existen, una a una
     for existente in existentes:
@@ -54,7 +54,7 @@ def choca_con_existentes(nueva,existentes) -> bool:
     return False 
 
 # FUNCIÓN (regla de negocio): crea la reserva si no choca. Recibe la nueva y la lista de las existentes.
-def crear_reserva(nueva,existentes):
+def crear_reserva(nueva: Reserva, existentes: list[Reserva]) -> Reserva:
     # Si choca con alguna existente...
     if choca_con_existentes(nueva,existentes):
         # ...se niega lanzando un error (la interfaz lo convertirá en un 409)
@@ -67,7 +67,7 @@ def crear_reserva(nueva,existentes):
         return nueva
 
 # FUNCIÓN (regla de negocio): da de alta una pista si su número no está repetido.
-def crear_pista(nueva:Pista, existentes:list[Pista]) -> Pista:
+def crear_pista(nueva: Pista, existentes: list[Pista]) -> Pista:
     # Recorre las pistas que ya existen
     for pista_existente in existentes:
         # Si alguna tiene el mismo número que la nueva...

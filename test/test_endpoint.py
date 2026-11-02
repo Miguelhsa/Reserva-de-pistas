@@ -65,7 +65,7 @@ def get_ruta_test() -> str:
     return RUTA_PRUEBA
 
 # TEST: una reserva libre se acepta (200) y la respuesta no lleva id ni rol
-def test_reserva_libre_se_acepta():
+def test_reserva_libre_se_acepta() -> None:
     # Preparar: archivo de prueba vacío
     guardar_reserva([],RUTA_PRUEBA)
     # Preparar: cuando el endpoint pida get_ruta, FastAPI le dará get_ruta_test
@@ -80,7 +80,7 @@ def test_reserva_libre_se_acepta():
     app.dependency_overrides.clear()
 
 # TEST: una reserva pegada a otra (empieza cuando acaba la anterior) se acepta
-def test_reserva_limite():
+def test_reserva_limite() -> None:
     #creo otra reserva que este al limite de solapar
     # Preparar: archivo de prueba vacío
     guardar_reserva([],RUTA_PRUEBA)
@@ -98,7 +98,7 @@ def test_reserva_limite():
     app.dependency_overrides.clear()
 
 # TEST: una reserva que se pisa con otra se rechaza (409)
-def test_reserva_solapa():
+def test_reserva_solapa() -> None:
     # Preparar: archivo de prueba vacío
     guardar_reserva([],RUTA_PRUEBA)
     # Preparar: usar la ruta de prueba

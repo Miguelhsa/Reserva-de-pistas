@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-10-31.
+- **Última sesión:** 2026-11-02.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -53,9 +53,27 @@ vive en `README.md`; aquí va el "por dónde vamos".
     `assert pistas_originales == cargar_pista(RUTA_PRUEBA)` → limpia con `guardar_pista([])`). `RUTA_PRUEBA =
     "test_persistencia.json"` (en `.gitignore`). Todos los tests en verde.
   - MAPA VISUAL del proyecto: https://claude.ai/artifact/FPir8t3bkExdpTraSoP7nd (copia en `MAPA.html`). Se actualiza con cada pieza.
-  - SIGUIENTE: (1) commit + push de la rama `feature/persistencia-pistas` + PR (incluye `MAPA.html`; borrar antes
-    `prueba_pistas.json`). (2) ORQUESTADOR `dar_de_alta_pista` (cargar_pista → crear_pista → guardar_pista) — que razone él
-    dónde vive y su firma. Luego router `/pista` → tests endpoint.
+  - Rama `feature/persistencia-pistas` MERGEADA (PR #11). Rama actual: `feature/orquestador-pista` (sin commitear).
+  - ORQUESTADOR DE PISTAS EN OBRA (`interfaz/orquestador.py`): decidió ÉL que vive en la interfaz y en el MISMO archivo que
+    `reservar()` (flujos centralizados; YAGNI partirlo). Firma tipada: `dar_de_alta_pista(nueva: Pista, ruta: str) -> Pista`
+    (devuelve la pista para que el router conteste). Imports al día (`cargar_pista`, `guardar_pista`, `Pista`, `crear_pista`).
+    Plan en comentarios (líneas 23-27): cargar → crear_pista (error si repetida / añade a la lista) → guardar_pista → return
+    de la pista nueva. Cuerpo aún con los comentarios solo.
+  - ORQUESTADOR DE PISTAS ESCRITO (2026-11-01, sin commitear): `pistas_existentes = cargar_pista(ruta)` →
+    `crear_pista(nueva, pistas_existentes)` → `guardar_pista(pistas_existentes, ruta)` → `return nueva`, cada línea bajo su
+    comentario. Sin test propio: decidió (B) probarlo vía test del endpoint, como `reservar()` (sus piezas ya tienen tests).
+  - TIPADO: el mentor tipó (a petición suya) TODAS las firmas del proyecto; `guardar_pista(pistas: list[Pista], ...)`
+    en plural. 9 tests en verde. Regla nueva en CLAUDE.md: pedirle el tipado en cada revisión.
+  - ROUTER `/pista` HECHO (2026-11-02): `interfaz/routers/pistas.py` (plural, como `reservas.py`) con `PistaIn`/`PistaOut`,
+    `get_ruta_pistas()` + `ruta: str = Depends(get_ruta_pistas)`, `POST /pista` → `solicitar_crear_pista` (traduce
+    `nueva_pista.numero` → `Pista`, `try` orquestador, `except ValueError` → 409, traduce a `PistaOut`). Enchufado en `app.py`.
+    Probado por él en `/docs`: 200 / 409 / 422. Override de `get_ruta_pistas` verificado (no toca `pistas.json` real).
+  - `cargar_pista`: si el archivo no existe → `except FileNotFoundError: return lista_pistas` (lista vacía). Decidido por él
+    que va en persistencia (única capa que sabe de archivos). `pistas.json` en `.gitignore`.
+  - SIGUIENTE: TESTS DEL ENDPOINT DE PISTAS (rama nueva). Primera decisión pendiente (suya): ¿en `test_endpoint.py` o en
+    archivo nuevo? (nombres `get_ruta_test`/`RUTA_PRUEBA` chocarían). Casos: nuevo → 200, repetido → 409, texto → 422.
+    Pendiente pequeño: comentarios de `app.py` del router de pistas dicen "reservas"; `cargar_reserva` tiene el mismo
+    problema de archivo inexistente (decidir si se arregla igual).
 
 ## Bitácora
 
@@ -229,7 +247,36 @@ vive en `README.md`; aquí va el "por dónde vamos".
   el nombre del archivo (`perisistencia`) vs `.gitignore`; preparó un dict con clave repetida en vez de `list[Pista]`;
   enseñó código sin ejecutarlo. Se saturó con la explicación de la traza en tabla → funcionó ir idea a idea con analogía
   (almacén/carrito/cajas). Nombres: pidió que los cambiara el mentor (se cambiaron solo nombres y comentarios).
-- Dudas para la próxima: ninguna. Empezar por el commit/PR de la rama y luego el orquestador de pistas.
+- Tarde: PR #11 mergeado; arrancado el orquestador de pistas (ubicación, firma tipada, imports y plan en comentarios).
+  Aprendió `git checkout -b` (crear + entrar en la rama); el orquestador no es "donde habla el usuario" (eso es el router),
+  sino el jefe de cocina que sirve a las puertas; tipar = `:` en parámetros y `->` en lo que devuelve, y el tipo hay que
+  importarlo (las anotaciones se evalúan al definir). Atascos: quitó imports para que el comentario cuadrara (al revés: el
+  comentario se adapta al código); fusionó "pasar la lista a guardar_pista" con el `return` (llamar ≠ devolver) — el mentor
+  le escribió los dos comentarios a petición suya.
+- Dudas para la próxima: ninguna. Retomar picando el cuerpo de `dar_de_alta_pista`.
+
+### 2026-11-01 — Orquestador de pistas escrito + tipado de todo el proyecto
+- Hecho: cuerpo de `dar_de_alta_pista` (cargar → crear_pista → guardar_pista → return). Firmas tipadas en todo el proyecto
+  (el mentor, a petición). Decidió router de pistas en archivo nuevo y probar el orquestador vía endpoint.
+- Aprendió: el parámetro sin tipar/en singular (`guardar_pista(pista, ...)`) le confundió → el porqué de tipar y nombrar en
+  plural; memoria (fotocopia en la mesa) vs disco (archivador): `crear_pista` solo apunta en la lista en memoria, el único que
+  escribe en disco es `guardar_pista`; la lista que pasas es LA MISMA (no una copia); `return` termina la función (lo que va
+  después no se ejecuta); se tipan firmas, no variables locales.
+- Atascos: pasó a `guardar_pista` la pista suelta en vez de la lista; luego volvió a cargar del disco tras `crear_pista`
+  (perdía la nueva sin error); luego hizo `return crear_pista(...)` saltándose el guardar. Lo desbloqueó la analogía
+  fotocopia/archivador, ir idea a idea.
+- Dudas para la próxima: ninguna. Arrancar el router de pistas.
+
+### 2026-11-02 — Router `/pista` funcionando + primera pista sin archivo + Depends de la ruta
+- Hecho: router de pistas completo y enchufado; `cargar_pista` tolera archivo inexistente; ruta inyectada con Depends.
+- Aprendió: un router por recurso (`app.py` = cuadro de enchufes); `fastapi dev` (recarga, solo local) vs `run` (producción);
+  `raise` (pasa el problema) vs `return` (ya sé la respuesta: "no hay archivo" = "no hay pistas"); `"a"`/`"w"` no permiten
+  leer y cargar no debe crear archivos (efecto secundario); `get_ruta` (la función) vs `get_ruta()` (la llamo yo, me salto
+  Depends) vs `ruta` (lo que me entrega FastAPI) — lo explicó con sus palabras; los nombres deben decir DE QUÉ son.
+- Atascos: copió la cabecera de reservas (import de `reservar`); `numero: id`; comillas triples para "aparcar" un parámetro
+  (error de sintaxis); `Pista(nueva_pista)` en vez de `.numero`; re-lanzó el FileNotFoundError; pasó `get_ruta()` y luego
+  `get_ruta` en vez de `ruta`. Pidió al mentor varios remates (comentarios, renombrado `get_ruta_pistas`).
+- Dudas para la próxima: ninguna. Empezar por dónde viven los tests de pistas.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
@@ -261,13 +308,16 @@ vive en `README.md`; aquí va el "por dónde vamos".
 ## A vigilar (puntos flacos crónicos)
 
 - `[ ]` (lista) vs `{ }` (dict/conjunto): repetido el 2026-10-31.
+- Memoria vs disco: cree que el dominio ya guarda en el archivo; repasar el viaje cargar→decidir→guardar (2026-11-01).
+- Copiar cabeceras/bloques de otro archivo sin releer (arrastra imports y comentarios de reservas).
+- Llamar a una función (pasarle algo) ≠ `return` (devolver a quien te llamó): los fusionó el 2026-10-31.
 - Importar la función cuando necesita la clase-molde (`crear_pista` vs `Pista`); variables con Mayúscula parecen clases.
 
 - Tiende a empezar por los OBJETOS/piezas en vez de por capacidades/capas.
 - Tiende a nombrar por la tecnología (frontend, bbdd) en vez de por el rol (interfaz, persistencia).
 - Prefijo `test_` solo para funciones que SON tests (no para las piezas que usan, ni para la app).
 - Tests que dependen del anterior: cada test monta su escenario.
-- Confunde los dos sitios de `Depends` (decorador vs. parámetro) — repasar hasta que salga solo.
+- Confunde los dos sitios de `Depends` (decorador vs. parámetro) — repasar hasta que salga solo. 2026-11-02: en el cuerpo se usa la VARIABLE (`ruta`), nunca `get_ruta()` ni `get_ruta`.
 - Comillas vs. variable: `"RUTA"` (texto) vs `RUTA` (valor).
 - Enseña código sin probarlo antes: pedirle que lo ejecute/pruebe él antes de pasarlo a revisión.
 - Olvida crear la rama antes de empezar (empezó en `main` el 2026-10-10).

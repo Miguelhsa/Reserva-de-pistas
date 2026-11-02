@@ -103,7 +103,8 @@ footer{font-size:13px;color:var(--muted)}
     <span class="chip done">dominio ✓</span><span class="sep">→</span>
     <span class="chip done">persistencia ✓</span><span class="sep">→</span>
     <span class="chip done">test persistencia ✓</span><span class="sep">→</span>
-    <span class="chip here">orquestador · estás aquí</span><span class="sep">→</span>
+    <span class="chip done">orquestador ✓ (sin probar)</span><span class="sep">→</span>
+    <span class="chip here">probar · estás aquí</span><span class="sep">→</span>
     <span class="chip">router /pista</span><span class="sep">→</span>
     <span class="chip">tests endpoint</span>
   </div>
@@ -139,7 +140,7 @@ footer{font-size:13px;color:var(--muted)}
     <span><i class="sw p"></i> planificado, sin construir</span>
     <span><i class="sw b"></i> el dato que viaja</span>
   </div>
-  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 31 oct 2026 (test de persistencia de pistas en verde).</footer>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 1 nov 2026 (orquestador de pistas escrito; todas las firmas del proyecto tipadas).</footer>
 </div>
 
 <script>
@@ -158,7 +159,7 @@ const N={
   getruta:{x:190,y:256,w:270,h:44,t:"get_ruta()",s:"entrega la ruta vía Depends"},
   orq:{x:190,y:330,w:270,h:60,t:"reservar()",s:"orquestador.py · coordina el flujo"},
   routerPista:{x:190,y:440,w:270,h:48,t:"POST /pista",s:"router de pistas",k:"pending"},
-  orqPista:{x:190,y:515,w:270,h:52,t:"dar_de_alta_pista()",s:"orquestador de pistas",k:"pending"},
+  orqPista:{x:190,y:515,w:270,h:52,t:"dar_de_alta_pista()",s:"orquestador.py · cargar→crear→guardar→return"},
   modelos:{x:505,y:62,w:220,h:64,t:"modelos.py",s:"Pista · Usuario · Reserva",s2:"dataclasses"},
   crearRes:{x:505,y:190,w:220,h:78,t:"crear_reserva()",s:"choca_con_existentes()",s2:"→ se_solapa_con()"},
   crearPista:{x:505,y:470,w:220,h:72,t:"crear_pista()",s:"número repetido →",s2:"ValueError"},
