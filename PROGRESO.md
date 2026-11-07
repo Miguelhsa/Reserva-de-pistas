@@ -76,9 +76,14 @@ vive en `README.md`; aquí va el "por dónde vamos".
     (`TestClient`, `app`, `get_ruta_pistas`, `guardar_pista`), `cliente = TestClient(app)`, `RUTA_TEST_PISTAS =
     "test_pistas.json"` (en `.gitignore`), `get_ruta_pistas_test() -> str`. Escribió él en un comentario el aviso en el
     orden correcto: `app.dependency_overrides[get_ruta_pistas] = get_ruta_pistas_test`. Plan de 3 casos en comentarios.
-  - SIGUIENTE: completar en el plan los resultados esperados de los casos 2 (409) y 3 (422); escribir el test del caso 1
-    (pista nueva → 200 + `{"numero": n}`): reset con `guardar_pista([])` + override → POST → asserts → `.clear()`.
-    Luego casos 2 y 3. Luego commit + PR.
+  - TESTS DEL ENDPOINT DE PISTAS HECHOS (2026-11-07): `test_creacion_pista` (200 + cuerpo), `test_error_pista_repetida`
+    (vacía el archivo y crea la pista ÉL MISMO antes del POST que prueba → 409 + detail), `test_error_valor_str` (→ 422).
+    Verificado: el caso 2 pasa solo y sin archivo; los 3 pasan en orden inverso. Suite completa: 12 en verde.
+  - ⭐ CAPACIDAD «DAR DE ALTA UNA PISTA» COMPLETA (dominio + persistencia + orquestador + router + tests).
+  - Mejoras opcionales que decidió él: `assert` del POST de preparación del caso 2; `pista_test` → `PISTA_TEST`
+    (constante compartida que nadie modifica).
+  - SIGUIENTE: commit + push + PR de `feature/tests-pistas`. Luego nueva capacidad: CONSULTAR DISPONIBILIDAD (que razone él
+    la arquitectura: qué pregunta el usuario, qué capas, qué datos necesita — pistas + reservas).
 
 ## Bitácora
 
@@ -291,7 +296,12 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Atascos: comentarios de las dos funciones de ruta intercambiados (producción vs prueba); se resolvió con la infografía y
   una tabla línea/qué hay debajo/qué dice. No contestó directamente la pregunta de qué va en cada lado, pero luego escribió
   el aviso bien en un comentario.
-- Dudas para la próxima: ninguna. Seguir con el test del caso 1.
+- Tarde: 3 tests del endpoint de pistas en verde. Aprendió: `json=` es el «Request body» de /docs (dict con la forma de
+  `PistaIn`); el test habla con la puerta en JSON, no crea objetos `Pista` (caja negra); el test devuelve `None` (comprueba,
+  no produce; quien devuelve la pista es el endpoint); constante compartida en MAYÚSCULAS = «léela, no la cambies».
+- Atascos: el caso 2 dependía del caso 1 (lo confesaba su propio comentario) → lo arregló montando su escenario; comentarios
+  copiados de un test a otro que no cuadraban.
+- Dudas para la próxima: ninguna. Cerrar PR y arrancar «consultar disponibilidad».
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
