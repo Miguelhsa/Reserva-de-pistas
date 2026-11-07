@@ -7,8 +7,9 @@ from interfaz.routers.reservas import get_ruta
 # Para dejar el archivo de prueba vacío ([]) antes de cada test
 from persistencia.repositorio import guardar_reserva
 
-
-# Crea el cliente apuntando a la app
+# Crea el "navegador falso": un cliente que hace peticiones HTTP (POST, GET...) a nuestra app
+# directamente en memoria, sin arrancar el servidor con fastapi dev. Así los tests pueden
+# llamar a /pista como lo haría un usuario desde /docs, pero de forma automática y repetible.
 cliente = TestClient(app)
 
 # Datos de una reserva libre, en formato de ENTRADA (con id y rol)
@@ -56,8 +57,6 @@ datos_reserva_solapa = {
 }
 # Archivo de prueba: los tests escriben aquí, nunca en reservas.json
 RUTA_PRUEBA = "test_reservas.json"
-# EN CONSTRUCCIÓN (revisar el nombre de esta constante)
-RUTA_RESERVAS = "test_pistas.json"
 
 # 'Cafetera de juguete': devuelve la ruta de prueba en vez de la real
 def get_ruta_test() -> str:

@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-11-02.
+- **Última sesión:** 2026-11-07.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -70,10 +70,15 @@ vive en `README.md`; aquí va el "por dónde vamos".
     Probado por él en `/docs`: 200 / 409 / 422. Override de `get_ruta_pistas` verificado (no toca `pistas.json` real).
   - `cargar_pista`: si el archivo no existe → `except FileNotFoundError: return lista_pistas` (lista vacía). Decidido por él
     que va en persistencia (única capa que sabe de archivos). `pistas.json` en `.gitignore`.
-  - SIGUIENTE: TESTS DEL ENDPOINT DE PISTAS (rama nueva). Primera decisión pendiente (suya): ¿en `test_endpoint.py` o en
-    archivo nuevo? (nombres `get_ruta_test`/`RUTA_PRUEBA` chocarían). Casos: nuevo → 200, repetido → 409, texto → 422.
-    Pendiente pequeño: comentarios de `app.py` del router de pistas dicen "reservas"; `cargar_reserva` tiene el mismo
-    problema de archivo inexistente (decidir si se arregla igual).
+  - PR #12 mergeado. Rama actual: `feature/tests-pistas` (sin commitear).
+  - TESTS DEL ENDPOINT DE PISTAS EN OBRA (2026-11-07): decidió ÉL archivo nuevo `test/test_endpoint_pistas.py` (un archivo
+    de tests por puerta) y renombró el viejo a `test_endpoint_reservas.py`. Cabecera HECHA y comentada: imports
+    (`TestClient`, `app`, `get_ruta_pistas`, `guardar_pista`), `cliente = TestClient(app)`, `RUTA_TEST_PISTAS =
+    "test_pistas.json"` (en `.gitignore`), `get_ruta_pistas_test() -> str`. Escribió él en un comentario el aviso en el
+    orden correcto: `app.dependency_overrides[get_ruta_pistas] = get_ruta_pistas_test`. Plan de 3 casos en comentarios.
+  - SIGUIENTE: completar en el plan los resultados esperados de los casos 2 (409) y 3 (422); escribir el test del caso 1
+    (pista nueva → 200 + `{"numero": n}`): reset con `guardar_pista([])` + override → POST → asserts → `.clear()`.
+    Luego casos 2 y 3. Luego commit + PR.
 
 ## Bitácora
 
@@ -277,6 +282,16 @@ vive en `README.md`; aquí va el "por dónde vamos".
   (error de sintaxis); `Pista(nueva_pista)` en vez de `.numero`; re-lanzó el FileNotFoundError; pasó `get_ruta()` y luego
   `get_ruta` en vez de `ruta`. Pidió al mentor varios remates (comentarios, renombrado `get_ruta_pistas`).
 - Dudas para la próxima: ninguna. Empezar por dónde viven los tests de pistas.
+
+### 2026-11-07 — Cabecera de los tests del endpoint de pistas + repaso visual de Depends
+- Hecho: archivo de tests nuevo por puerta, cabecera comentada, plan de 3 casos. Infografía de repaso
+  `recursos/depends-recepcion.html` (nueva carpeta `recursos/`, enlazada desde FUNDAMENTOS).
+- Aprendió (repaso): en `dependency_overrides[A] = B`, A (entre corchetes) es la de PRODUCCIÓN que se sustituye y B la de
+  prueba que la sustituye; se importa la de producción para poder NOMBRARLA como clave.
+- Atascos: comentarios de las dos funciones de ruta intercambiados (producción vs prueba); se resolvió con la infografía y
+  una tabla línea/qué hay debajo/qué dice. No contestó directamente la pregunta de qué va en cada lado, pero luego escribió
+  el aviso bien en un comentario.
+- Dudas para la próxima: ninguna. Seguir con el test del caso 1.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 

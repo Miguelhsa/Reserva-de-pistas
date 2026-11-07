@@ -104,9 +104,8 @@ footer{font-size:13px;color:var(--muted)}
     <span class="chip done">persistencia ✓</span><span class="sep">→</span>
     <span class="chip done">test persistencia ✓</span><span class="sep">→</span>
     <span class="chip done">orquestador ✓ (sin probar)</span><span class="sep">→</span>
-    <span class="chip here">probar · estás aquí</span><span class="sep">→</span>
-    <span class="chip">router /pista</span><span class="sep">→</span>
-    <span class="chip">tests endpoint</span>
+    <span class="chip done">router /pista ✓ (probado a mano)</span><span class="sep">→</span>
+    <span class="chip here">tests endpoint · estás aquí</span>
   </div>
 
   <div class="modes" role="group" aria-label="Vista">
@@ -140,7 +139,7 @@ footer{font-size:13px;color:var(--muted)}
     <span><i class="sw p"></i> planificado, sin construir</span>
     <span><i class="sw b"></i> el dato que viaja</span>
   </div>
-  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 1 nov 2026 (orquestador de pistas escrito; todas las firmas del proyecto tipadas).</footer>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 2 nov 2026 (POST /pista funcionando: 200 / 409 / 422; primera pista sin archivo resuelta en la persistencia).</footer>
 </div>
 
 <script>
@@ -158,7 +157,7 @@ const N={
   router:{x:190,y:150,w:270,h:78,t:"POST /reserva",s:"routers/reservas.py · solicitar_reserva",s2:"moldes ReservaIn / ReservaOut"},
   getruta:{x:190,y:256,w:270,h:44,t:"get_ruta()",s:"entrega la ruta vía Depends"},
   orq:{x:190,y:330,w:270,h:60,t:"reservar()",s:"orquestador.py · coordina el flujo"},
-  routerPista:{x:190,y:440,w:270,h:48,t:"POST /pista",s:"router de pistas",k:"pending"},
+  routerPista:{x:190,y:440,w:270,h:48,t:"POST /pista",s:"routers/pistas.py · solicitar_crear_pista"},
   orqPista:{x:190,y:515,w:270,h:52,t:"dar_de_alta_pista()",s:"orquestador.py · cargar→crear→guardar→return"},
   modelos:{x:505,y:62,w:220,h:64,t:"modelos.py",s:"Pista · Usuario · Reserva",s2:"dataclasses"},
   crearRes:{x:505,y:190,w:220,h:78,t:"crear_reserva()",s:"choca_con_existentes()",s2:"→ se_solapa_con()"},
@@ -168,7 +167,7 @@ const N={
   cargarPista:{x:770,y:440,w:160,h:48,t:"cargar_pista()",s:"JSON → objetos"},
   guardarPista:{x:770,y:520,w:160,h:48,t:"guardar_pista()",s:"objetos → JSON"},
   jsonRes:{x:970,y:210,w:110,h:60,t:"reservas.json",s:"(tests: test_",s2:"reservas.json)",k:"disk"},
-  jsonPista:{x:970,y:475,w:110,h:60,t:"pistas",s:"archivo JSON",s2:"(nombre por fijar)",k:"disk"}
+  jsonPista:{x:970,y:475,w:110,h:60,t:"pistas.json",s:"si no existe:",s2:"lista vacía",k:"disk"}
 };
 
 const W="interfaz",D="dominio",P="persistencia",F="fuera";
@@ -197,17 +196,17 @@ const flowBad=[...commonStart,
   {f:"router",to:"cliente",d:"409",L:W,err:true,title:"Respuesta 409 Conflict",text:"raise HTTPException(409, «Esa franja ya esta reservada»). El cliente recibe el código y el mensaje.",why:"409 significa «choca con el estado actual». Tu test test_reserva_solapa comprueba exactamente esto."}
 ];
 const flowPista=[
-  {f:"cliente",to:"routerPista",d:"JSON {numero}",L:W,pend:true,title:"Petición de alta",text:"Un administrador pedirá dar de alta una pista con su número.",why:"Es la misma puerta que /reserva, pero con otro recurso. Repetirás el patrón que ya dominas."},
-  {f:"routerPista",to:"orqPista",d:"Pista + ruta",L:W,pend:true,title:"Router → orquestador",text:"El router traducirá la entrada a una Pista del dominio y delegará.",why:"Mismo motivo que en reservas: el router no decide nada de negocio."},
+  {f:"cliente",to:"routerPista",d:"JSON {numero}",L:W,title:"Petición de alta",text:"El administrador manda por HTTP un JSON con el número. Pydantic lo valida con PistaIn (numero: int); si llega texto, 422.",why:"Es la misma puerta que /reserva, pero con otro recurso y en su propio router, enchufado en app.py."},
+  {f:"routerPista",to:"orqPista",d:"Pista + RUTA_PISTAS",L:W,title:"Router → orquestador",text:"solicitar_crear_pista saca el número de dentro de PistaIn (nueva_pista.numero), construye la Pista del dominio y llama a dar_de_alta_pista dentro de un try.",why:"Mismo motivo que en reservas: el router no decide nada de negocio."},
   {f:"orqPista",to:"cargarPista",d:"ruta",L:P,title:"Cargar las pistas existentes",text:"cargar_pista(ruta) lee el archivo y reconstruye cada Pista desde su número.",why:"Para comprobar si el número ya existe, primero hay que tener la lista."},
-  {f:"cargarPista",to:"jsonPista",d:"lee",L:P,title:"Lectura del disco",text:"json.load devuelve diccionarios {\"numero\": …}.",why:"Este viaje de ida y vuelta (guardar → cargar → comparar) es justo lo que va a probar tu próximo test."},
+  {f:"cargarPista",to:"jsonPista",d:"lee",L:P,title:"Lectura del disco",text:"json.load devuelve diccionarios {\"numero\": …}.",why:"Si pistas.json todavía no existe (la primera pista de tu vida), cargar_pista atrapa FileNotFoundError y devuelve una lista vacía con return: no es un problema, es «todavía no hay pistas». Lo decide la persistencia porque es la única que sabe que hay archivos."},
   {f:"jsonPista",to:"orqPista",d:"list[Pista]",L:P,title:"Vuelven objetos Pista",text:"cargar_pista devuelve list[Pista].",why:"Esta ida y vuelta ya está protegida por test_pistas_guardadas_se_cargan_iguales, en test_persistencia.py."},
   {f:"orqPista",to:"crearPista",d:"nueva + list[Pista]",L:D,title:"Regla: número único",text:"crear_pista compara .numero con cada existente. Si está libre, añade la pista con append fuera del bucle.",why:"Ya está probado en test_dominio (caso nuevo y caso repetido)."},
   {f:"crearPista",to:"crearPista",d:"ValueError",L:D,err:true,title:"…o número repetido",text:"Si el número ya existe, lanza ValueError. La puerta lo traducirá a 409.",why:"Es el mismo patrón que en reservas: el dominio dice «no» y la interfaz elige el código HTTP."},
   {f:"orqPista",to:"guardarPista",d:"list[Pista]",L:P,title:"Guardar la lista",text:"guardar_pista convierte cada Pista con asdict y reescribe el archivo.",why:"Cargar → decidir → guardar: el mismo orden que en reservar()."},
   {f:"guardarPista",to:"jsonPista",d:"JSON (texto)",L:P,title:"Escritura en disco",text:"json.dump escribe la lista de diccionarios.",why:"Aquí no hace falta default=str: una Pista solo lleva un entero, y JSON ya entiende los números."},
-  {f:"orqPista",to:"routerPista",d:"Pista",L:W,pend:true,title:"Vuelta y respuesta",text:"El router responderá con un molde de salida (o 409 si se repite).",why:"Lo diseñarás tú cuando llegues aquí: ¿qué quiere ver el admin tras el alta?"},
-  {f:"routerPista",to:"cliente",d:"200 / 409",L:W,pend:true,title:"Fin del flujo",text:"El cliente recibe la pista creada o el conflicto.",why:"Cuando esto funcione, «consultar disponibilidad» ya tendrá la lista de pistas del club con la que trabajar."}
+  {f:"orqPista",to:"routerPista",d:"Pista",L:W,title:"Vuelta y respuesta",text:"El router traduce la Pista a PistaOut (solo el número). Si hubo ValueError, el except lo convierte en HTTPException 409.",why:"raise pasa el problema a otro; la interfaz es la única que sabe traducirlo a un código HTTP."},
+  {f:"routerPista",to:"cliente",d:"200 / 409",L:W,title:"Fin del flujo",text:"El cliente recibe la pista creada o el conflicto.",why:"Cuando esto funcione, «consultar disponibilidad» ya tendrá la lista de pistas del club con la que trabajar."}
 ];
 const depsStep=[{deps:true,L:"imports",title:"Quién importa a quién",text:"Las flechas negras son imports, no viajes de datos. La interfaz importa al dominio y a la persistencia; la persistencia importa al dominio para reconstruir objetos. El dominio no importa a nadie y nadie importa a la interfaz.",why:"Todas las flechas apuntan hacia el dominio, el centro estable. Por eso puedes cambiar FastAPI o JSON sin tocar las reglas del negocio. Ojo: tu README solo dibuja interfaz → dominio ← persistencia, pero el orquestador también importa a la persistencia. ¿Lo añadirías?"}];
 const testSteps=[
