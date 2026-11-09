@@ -6,8 +6,10 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 # Clases del dominio, para traducir lo que entra a objetos de la cocina
 from dominio.modelos import Pista, Usuario, Reserva
-# El orquestador, al que el endpoint le pasa la reserva
-from interfaz.orquestador import reservar
+# El orquestador, al que el endpoint le pasa la reserva, consulta_disponibilidad
+from interfaz.orquestador import reservar, consulta_disponibilidad
+#Importamos Pistaout que será lo que entregaremos en el endpoint y get_ruta_pistas
+from interfaz.routers.pistas import get_ruta_pistas, PistaOut
 
 # Archivo donde se guardan las reservas reales
 RUTA_RESERVAS = "reservas.json"
@@ -106,4 +108,15 @@ def solicitar_reserva(nueva_reserva: ReservaIn, ruta: str = Depends(get_ruta)) -
     # Devuelve la respuesta: FastAPI la convierte en JSON
     return reserva_nueva_out
 
-
+#endpoint get donde obtendremos un listado de pistas que estan diponibles 
+@router.get("/disponibilidad", response_model= list[PistaOut])
+def disponibilidad(fecha_inicio:datetime, fecha_fin:datetime, ruta_reservas:str = Depends(get_ruta), ruta_pistas:str =Depends(get_ruta_pistas)) -> list[PistaOut]:
+    #llamar a consulta_disponibilidad para obtener el listado de pistas pero en formato objeto
+    lista_pistas = consulta_disponibilidad(fecha_inicio, fecha_fin,ruta_reservas,ruta_pistas)
+    #hago un bucle para entregar un listado de numero, que son los numeros de pistaOut
+    #Creo una lista vacia donde introducir los numeros de pistaOut
+    pistas_libres = []
+    for pista in lista_pistas:
+        pistas_libres.append(PistaOut(numero= pista.numero))
+    #retorno la lista con las pistas
+    return pistas_libres

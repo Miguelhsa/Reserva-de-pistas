@@ -95,8 +95,19 @@ vive en `README.md`; aquí va el "por dónde vamos".
     `test_pista_reservada_no_aparece_libre` (incluye el límite de franja pegada), `test_franja_ocupada_en_todas_no_devuelve_ninguna`,
     `test_franja_sin_reservas_devuelve_todas`. Datos compartidos como constantes (`PISTAS_CLUB`, `RESERVAS_EXISTENTES`, franjas).
     Suite: 15 en verde.
-  - SIGUIENTE: commit + push + PR de la pieza «regla + tests». Luego ORQUESTADOR de consultar disponibilidad (que razone él:
-    qué carga, qué llama, qué devuelve; no guarda nada) → router GET `/pista/disponibles?inicio=&fin=` → tests endpoint.
+  - PR #14 (regla + tests) mergeado. Rama actual: `feature/orquestador-disponibilidad` (sin commitear).
+  - ORQUESTADOR HECHO (2026-11-09) en `interfaz/orquestador.py`: `consulta_disponibilidad(fecha_inicio: datetime,
+    fecha_fin: datetime, ruta_reservas: str, ruta_pistas: str) -> list[Pista]` → `cargar_pista` + `cargar_reserva` →
+    `return consulta_pistas_libres(...)`. No guarda nada (solo lee, como el GET). Dos rutas porque son dos archivos.
+  - `cargar_reserva`: ahora `except FileNotFoundError: return lista_reservas` (club sin reservas → todo libre; arregla
+    también la 1ª reserva de un club nuevo, que antes daba 500). Verificado (mentor): sin reservas.json → todas libres.
+  - Pendiente pequeño: comentarios del orquestador (plan sin "devolver"; paso 3/4 sin numerar).
+  - ROUTER HECHO (2026-11-09): decidió ÉL que vive en `routers/reservas.py` («disponibilidad para reservar»; se le propuso
+    /pista/disponibles por criterio de recurso y mantuvo su decisión con motivo). `GET /reserva/disponibilidad?fecha_inicio=&
+    fecha_fin=` → `disponibilidad(fecha_inicio: datetime, fecha_fin: datetime, ruta_reservas = Depends(get_ruta), ruta_pistas
+    = Depends(get_ruta_pistas)) -> list[PistaOut]`; reutiliza `PistaOut` y `get_ruta_pistas` importados de `routers/pistas.py`;
+    traduce cada `Pista` → `PistaOut(numero=pista.numero)`. Probado por él en /docs.
+  - SIGUIENTE: tests del endpoint de disponibilidad (necesitan DOS overrides: reservas y pistas). Luego commit + PR.
 
 ## Bitácora
 
@@ -329,7 +340,17 @@ vive en `README.md`; aquí va el "por dónde vamos".
   localiza el fallo); `Reserva(1, ...)` ≠ `Reserva(Pista(1), ...)` (`Pista(1) == 1` es False → nada chocaba); lo esperado
   debe ser `[Pista(2)]`, no `[2]`. Corrigió él solo la expectativa errónea del caso 1. Nombres/comentarios: los cambió el
   mentor a petición suya.
-- Dudas para la próxima: ninguna. PR y orquestador.
+- 2026-11-09 (2): orquestador de disponibilidad. Aprendió: este orquestador no guarda (coherente con el GET); el resultado de
+  la regla hay que DEVOLVERLO (sin `return` el router recibiría None); `print` en persistencia no llega al usuario y ensucia
+  el servidor (rastro → `logging`). Olvidó al principio cargar las reservas y el `return`. Comentarios de `cargar_reserva`:
+  el mentor, a petición suya.
+- 2026-11-09 (3): router GET. Aprendió: query params = parámetros simples tipados en la firma (el nombre del parámetro es el
+  de la URL); FastAPI convierte texto → datetime y da 422 solo; formato ISO `2026-11-14T18:00`; `list[PistaOut]` en
+  response_model y en `->`; pasar argumentos con nombre evita errores de orden; `PistaOut(numero=...)` = fabricar el molde
+  de salida con el campo por nombre. Atascos: import `routers.pistas` sin `interfaz.`; `int` en vez de `datetime`;
+  `response_model` sin `list`; devolver números sueltos en vez de `PistaOut`; editó pistas.json a mano sin guardar
+  (se le recomendó dar de alta por la API).
+- Dudas para la próxima: ninguna. Tests del endpoint de disponibilidad.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
