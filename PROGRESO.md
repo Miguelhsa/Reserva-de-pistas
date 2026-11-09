@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-11-07.
+- **Última sesión:** 2026-11-09.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -76,9 +76,27 @@ vive en `README.md`; aquí va el "por dónde vamos".
     (`TestClient`, `app`, `get_ruta_pistas`, `guardar_pista`), `cliente = TestClient(app)`, `RUTA_TEST_PISTAS =
     "test_pistas.json"` (en `.gitignore`), `get_ruta_pistas_test() -> str`. Escribió él en un comentario el aviso en el
     orden correcto: `app.dependency_overrides[get_ruta_pistas] = get_ruta_pistas_test`. Plan de 3 casos en comentarios.
-  - SIGUIENTE: completar en el plan los resultados esperados de los casos 2 (409) y 3 (422); escribir el test del caso 1
-    (pista nueva → 200 + `{"numero": n}`): reset con `guardar_pista([])` + override → POST → asserts → `.clear()`.
-    Luego casos 2 y 3. Luego commit + PR.
+  - TESTS DEL ENDPOINT DE PISTAS HECHOS (2026-11-07): `test_creacion_pista` (200 + cuerpo), `test_error_pista_repetida`
+    (vacía el archivo y crea la pista ÉL MISMO antes del POST que prueba → 409 + detail), `test_error_valor_str` (→ 422).
+    Verificado: el caso 2 pasa solo y sin archivo; los 3 pasan en orden inverso. Suite: 12 en verde. PR #13 mergeado por él.
+  - ⭐ CAPACIDAD «DAR DE ALTA UNA PISTA» COMPLETA (dominio + persistencia + orquestador + router + tests).
+  - Mejoras opcionales pendientes (decide él): `assert` del POST de preparación del caso 2; `pista_test` → `PISTA_TEST`.
+  - NUEVA CAPACIDAD «CONSULTAR DISPONIBILIDAD» (rama `feature/consultar-disponibilidad`, sin commitear) — diseño razonado
+    por él: el socio da una franja (inicio, fin) y recibe las pistas libres; todas las pistas iguales (YAGNI). Puerta = GET
+    con query params (solo lee). Datos: pistas.json (TODAS) + reservas.json (ocupadas) → libres = todas − ocupadas.
+    Regla en el DOMINIO.
+  - REGLA HECHA en `dominio/modelos.py`: `consulta_pistas_libres(pistas_club: list[Pista], fecha_inicio: datetime,
+    fecha_fin: datetime, reservas_existentes: list[Reserva]) -> list[Pista]`: por cada pista monta una `Reserva`
+    hipotética (pista, [], inicio, fin) y si `not choca_con_existentes(...)` → `append(pista)`. Probada a mano (mentor):
+    18-19:30 con pista 1 reservada → [2, 3]; franja pegada 19:30-21 → [1, 2, 3]; club vacío → [].
+  - Mejora futura anotada (idea suya): con BBDD real, cargar solo las reservas de la franja (filtro en PERSISTENCIA:
+    nueva función del repositorio); la regla del dominio no cambiaría.
+  - TESTS DE LA REGLA HECHOS (2026-11-09) en `test_dominio.py`, uno por caso (decidido por él, para localizar el fallo):
+    `test_pista_reservada_no_aparece_libre` (incluye el límite de franja pegada), `test_franja_ocupada_en_todas_no_devuelve_ninguna`,
+    `test_franja_sin_reservas_devuelve_todas`. Datos compartidos como constantes (`PISTAS_CLUB`, `RESERVAS_EXISTENTES`, franjas).
+    Suite: 15 en verde.
+  - SIGUIENTE: commit + push + PR de la pieza «regla + tests». Luego ORQUESTADOR de consultar disponibilidad (que razone él:
+    qué carga, qué llama, qué devuelve; no guarda nada) → router GET `/pista/disponibles?inicio=&fin=` → tests endpoint.
 
 ## Bitácora
 
@@ -291,7 +309,27 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Atascos: comentarios de las dos funciones de ruta intercambiados (producción vs prueba); se resolvió con la infografía y
   una tabla línea/qué hay debajo/qué dice. No contestó directamente la pregunta de qué va en cada lado, pero luego escribió
   el aviso bien en un comentario.
-- Dudas para la próxima: ninguna. Seguir con el test del caso 1.
+- Tarde: 3 tests del endpoint de pistas en verde. Aprendió: `json=` es el «Request body» de /docs (dict con la forma de
+  `PistaIn`); el test habla con la puerta en JSON, no crea objetos `Pista` (caja negra); el test devuelve `None` (comprueba,
+  no produce); constante compartida en MAYÚSCULAS = «léela, no la cambies».
+- Atascos: el caso 2 dependía del caso 1 (lo confesaba su propio comentario) → lo arregló montando su escenario.
+- Dudas para la próxima: ninguna.
+
+### 2026-11-08 — Consultar disponibilidad: diseño macro + regla del dominio
+- Hecho: PR #13 por su cuenta. Diseño de la capacidad (contrato GET + query params, datos, capa de la regla) y regla escrita.
+  Mapa: orquestador agrupado en bloque propio (petición suya) + barra de progreso de la nueva capacidad.
+- Aprendió: GET = solo leer vs POST = crear; query params para filtrar; reservas.json no basta (una pista sin reservas no
+  aparece); «¿lo decide el club o la tecnología?» para ubicar una regla; reutilizar `choca_con_existentes` con una reserva
+  HIPOTÉTICA; `not` invierte una condición; un dict no es un objeto del molde (no tiene `se_solapa_con`); la pregunta
+  (reserva hipotética) vs la respuesta (la pista).
+- Atascos: puso la regla en el orquestador; el dominio llamando a `cargar_pista()` y a `solicitar_reserva` (flechas al
+  revés); `{}` en vez de `Reserva(...)`; creía que `choca_con_existentes` da True si NO choca (se demostró ejecutándolo);
+  `append` de la reserva en vez de la pista. Pidió al mentor los comentarios-plan de la función.
+- 2026-11-09: tests del dominio en verde. Aprendió: un test por caso (pytest para en el primer assert que falla; el nombre
+  localiza el fallo); `Reserva(1, ...)` ≠ `Reserva(Pista(1), ...)` (`Pista(1) == 1` es False → nada chocaba); lo esperado
+  debe ser `[Pista(2)]`, no `[2]`. Corrigió él solo la expectativa errónea del caso 1. Nombres/comentarios: los cambió el
+  mentor a petición suya.
+- Dudas para la próxima: ninguna. PR y orquestador.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
@@ -322,7 +360,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 
 ## A vigilar (puntos flacos crónicos)
 
-- `[ ]` (lista) vs `{ }` (dict/conjunto): repetido el 2026-10-31.
+- `[ ]` (lista) vs `{ }` (dict/conjunto): repetido el 2026-10-31. 2026-11-08: dict en vez de `Reserva(...)`.
 - Memoria vs disco: cree que el dominio ya guarda en el archivo; repasar el viaje cargar→decidir→guardar (2026-11-01).
 - Copiar cabeceras/bloques de otro archivo sin releer (arrastra imports y comentarios de reservas).
 - Llamar a una función (pasarle algo) ≠ `return` (devolver a quien te llamó): los fusionó el 2026-10-31.
