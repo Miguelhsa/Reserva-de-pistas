@@ -78,3 +78,27 @@ def crear_pista(nueva: Pista, existentes: list[Pista]) -> Pista:
     existentes.append(nueva)
     # Devuelve la pista creada (igual que crear_reserva, por coherencia)
     return nueva
+
+# FUNCIÓN (regla de negocio): ¿qué pistas del club están libres en la franja que pide el socio?
+# RECIBE los datos ya cargados (las pistas del club y las reservas existentes): el dominio NO va a buscarlos al disco,
+# se los da el orquestador. Para cada pista pregunta "si alguien la reservara en esta franja, ¿chocaría?" reutilizando
+# choca_con_existentes (la misma regla de solapamiento que usan las reservas). Devuelve solo las que NO chocan.
+def consulta_pistas_libres(pistas_club: list[Pista],fecha_inicio:datetime,fecha_fin:datetime, reservas_existentes:list[Reserva]) -> list[Pista]:
+    #Pasos:
+    #1 Preparo una lista vacía donde iré apuntando las pistas libres
+    pistas_libres = []
+    #2 Recorro las pistas del club (pistas_club), una a una
+    for pista in pistas_club:
+        #2.1 Monto una reserva HIPOTÉTICA con esa pista, sin jugadores (lista vacía) y la franja del socio (fecha_inicio, fecha_fin)
+        reserva_hipotetica = Reserva(
+            pista,
+            [],
+            fecha_inicio,
+            fecha_fin
+        )
+        #2.2 Pregunto a choca_con_existentes si esa reserva hipotética choca con las reservas_existentes
+        if not choca_con_existentes(reserva_hipotetica,reservas_existentes):
+        #2.3 Si NO choca, la pista está libre: la añado a la lista de libres
+            pistas_libres.append(pista)
+    #3 Después de mirarlas TODAS (fuera del for), devuelvo la lista de pistas libres
+    return pistas_libres

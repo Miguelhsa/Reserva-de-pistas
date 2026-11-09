@@ -1,5 +1,5 @@
 # Clases y funciones del dominio que se van a probar
-from dominio.modelos import Pista, Usuario, Reserva, crear_reserva, crear_pista
+from dominio.modelos import Pista, Usuario, Reserva, crear_reserva, crear_pista, consulta_pistas_libres
 # Para crear las fechas de las reservas de prueba
 from datetime import datetime
 # pytest: para pytest.raises (comprobar que algo lanza un error)
@@ -64,3 +64,61 @@ def test_crear_pista_error() -> None:
 
     # Y no debe haber añadido nada: la lista sigue con 2 pistas
     assert len(existentes) == 2
+
+#Datos COMPARTIDOS para los tests de consulta_pistas_libres (en MAYÚSCULAS: constantes que nadie modifica;
+#la función solo las lee). Cada test consulta una FRANJA distinta sobre el mismo club y las mismas reservas.
+#Pistas del club
+PISTAS_CLUB = [
+    Pista(1),
+    Pista(2)
+]
+#Reservas existentes
+# Pista 1 de 20:00 a 21:00
+RESERVAS_EXISTENTES = [
+    Reserva(Pista(1),[usuario_1],datetime(2026,10,3,20,0),datetime(2026,10,3,21,0)),
+# Reserva de la pista 2 de 19:00 a 20:00 (termina justo cuando empieza la franja del primer test)
+    Reserva(Pista(2),[usuario_2],datetime(2026,10,3,19,00),datetime(2026,10,3,20,00)),
+# Pista 1 de 21:00 a 22:00 (pegada a su reserva de 20:00-21:00)
+    Reserva(Pista(1),[usuario_2],datetime(2026,10,3,21,00),datetime(2026,10,3,22,00))
+]
+
+#Franja 20:00-21:00: la pista 1 está ocupada; la pista 2 está libre (su reserva acaba justo a las 20:00)
+INICIO_FRANJA_PISTA_1_OCUPADA = datetime(2026,10,3,20,0)
+FIN_FRANJA_PISTA_1_OCUPADA = datetime(2026,10,3,21,0)
+#Franja 01:00-23:00: pisa reservas de todas las pistas
+INICIO_FRANJA_TODO_OCUPADO = datetime(2026,10,3,1,0)
+FIN_FRANJA_TODO_OCUPADO = datetime(2026,10,3,23,0)
+#Franja 08:00-09:00: no hay ninguna reserva, todas las pistas libres
+INICIO_FRANJA_LIBRE = datetime(2026,10,3,8,0)
+FIN_FRANJA_LIBRE = datetime(2026,10,3,9,0) 
+
+#Tests de consulta_pistas_libres: uno por caso, para que el nombre del que falle diga qué se ha roto
+#TEST: la pista 1 tiene reserva en la franja -> no sale; la pista 2 (reserva pegada, no choca) -> sí sale
+def test_pista_reservada_no_aparece_libre() -> None:
+    #Solo debe devolver la pista 2
+    assert consulta_pistas_libres(
+        PISTAS_CLUB,
+        INICIO_FRANJA_PISTA_1_OCUPADA,
+        FIN_FRANJA_PISTA_1_OCUPADA,
+        RESERVAS_EXISTENTES
+        ) == [Pista(2)]
+
+#TEST: la franja choca con reservas de todas las pistas -> lista vacía
+def test_franja_ocupada_en_todas_no_devuelve_ninguna() -> None:
+    #No debe devolver ninguna pista    
+    assert consulta_pistas_libres(
+        PISTAS_CLUB,
+        INICIO_FRANJA_TODO_OCUPADO,
+        FIN_FRANJA_TODO_OCUPADO,
+        RESERVAS_EXISTENTES
+        ) == []    
+
+#TEST: franja sin ninguna reserva -> devuelve todas las pistas del club
+def test_franja_sin_reservas_devuelve_todas() -> None:
+    #Debe devolver las dos pistas
+    assert consulta_pistas_libres(
+        PISTAS_CLUB,
+        INICIO_FRANJA_LIBRE,
+        FIN_FRANJA_LIBRE,
+        RESERVAS_EXISTENTES
+        ) == [Pista(1),Pista(2)]  
