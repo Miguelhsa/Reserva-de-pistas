@@ -21,22 +21,28 @@ def guardar_reserva(reservas: list[Reserva], ruta: str) -> None:
 def cargar_reserva(ruta: str) -> list[Reserva]:
     # Aquí se irán acumulando las reservas ya convertidas en objetos
     lista_reservas = []
-    # Abre el archivo para leer
-    with open(ruta,"r") as f:
-        # json.load devuelve DICCIONARIOS, no objetos
-        reservas = json.load(f) #esto entrega una lisa con todas las reservas
-        # Recorre cada reserva (cada una es un diccionario)
-        for linea_reserva in reservas:
-            # Lista para los usuarios de ESTA reserva
-            lista_usuarios = []
-            # Recorre los usuarios de esta reserva (también son diccionarios)
-            for usuario in linea_reserva["usuarios"]:
-                #cada usuario hay que convertirlo a un objeto usuario
-                objeto_usuario = Usuario(usuario["id"],usuario["nombre"],usuario["apellidos"],usuario["rol"])
-                # Añade el usuario ya convertido a la lista de esta reserva
-                lista_usuarios.append(objeto_usuario)
-            # Reconstruye la Reserva: Pista desde su número, la lista de usuarios y las fechas de texto a datetime
-            lista_reservas.append(Reserva(Pista(linea_reserva["pista"]["numero"]),lista_usuarios,datetime.fromisoformat(linea_reserva["fecha_inicio"]),datetime.fromisoformat(linea_reserva["fecha_fin"])))
+    # Intentamos leer el archivo: puede que todavía no exista (club nuevo, nadie ha reservado nunca)
+    try:
+        # Abre el archivo en modo lectura ("r"); 'with' lo cierra solo al terminar
+        with open(ruta,"r") as f:
+            # json.load devuelve DICCIONARIOS, no objetos
+            reservas = json.load(f) #esto entrega una lisa con todas las reservas
+            # Recorre cada reserva (cada una es un diccionario)
+            for linea_reserva in reservas:
+                # Lista para los usuarios de ESTA reserva
+                lista_usuarios = []
+                # Recorre los usuarios de esta reserva (también son diccionarios)
+                for usuario in linea_reserva["usuarios"]:
+                    #cada usuario hay que convertirlo a un objeto usuario
+                    objeto_usuario = Usuario(usuario["id"],usuario["nombre"],usuario["apellidos"],usuario["rol"])
+                    # Añade el usuario ya convertido a la lista de esta reserva
+                    lista_usuarios.append(objeto_usuario)
+                # Reconstruye la Reserva: Pista desde su número, la lista de usuarios y las fechas de texto a datetime
+                lista_reservas.append(Reserva(Pista(linea_reserva["pista"]["numero"]),lista_usuarios,datetime.fromisoformat(linea_reserva["fecha_inicio"]),datetime.fromisoformat(linea_reserva["fecha_fin"])))
+    # Si el archivo no existe NO es un error: significa "todavía no hay reservas"
+    except FileNotFoundError:
+        # Devuelve la lista vacía (así el resto del sistema sigue funcionando: todo libre, la 1ª reserva se puede crear)
+        return lista_reservas
     # Devuelve la lista de objetos Reserva (fuera de los for: cuando ya están todas)
     return lista_reservas
 
