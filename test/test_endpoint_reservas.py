@@ -4,8 +4,14 @@ from fastapi.testclient import TestClient
 from interfaz.app import app
 # La 'cafetera' real de la ruta, para poder sustituirla en los tests
 from interfaz.routers.reservas import get_ruta
-# Para dejar el archivo de prueba vacío ([]) antes de cada test
-from persistencia.repositorio import guardar_reserva
+# Para PREPARAR los archivos de prueba antes de cada test: vaciarlos ([]) o rellenarlos con pistas/reservas de ejemplo
+from persistencia.repositorio import guardar_reserva,guardar_pista
+# La ruta real de PISTAS (producción): la importo para poder decirle a FastAPI que la sustituya en los tests
+from interfaz.routers.pistas import get_ruta_pistas
+# Clase Pista del dominio: guardar_pista necesita objetos Pista para preparar el club de prueba
+# (al endpoint se le habla en JSON/URL; Pista solo se usa para montar el escenario)
+from dominio.modelos import Pista
+
 
 # Crea el "navegador falso": un cliente que hace peticiones HTTP (POST, GET...) a nuestra app
 # directamente en memoria, sin arrancar el servidor con fastapi dev. Así los tests pueden
@@ -35,6 +41,7 @@ respuesta_esperada = {
 }
 
 # Reserva pegada a la anterior: empieza a las 19:30, justo cuando acaba la otra
+#Tambien usare esta reserva para el test_consulta_disponibilidad_pistas
 datos_reserva_limite = {
     "pista": 1,
     "usuarios": [
@@ -62,6 +69,14 @@ RUTA_PRUEBA = "test_reservas.json"
 def get_ruta_test() -> str:
     # Devuelve la constante
     return RUTA_PRUEBA
+
+# Archivo de prueba de PISTAS: los tests de disponibilidad leen las pistas del club de aquí, nunca de pistas.json
+RUTA_PRUEBA_PISTA = "test_pistas.json"
+
+# Sustituta de get_ruta_pistas: con dependency_overrides, FastAPI entregará esta ruta de prueba en lugar de la real
+def get_ruta_test_pistas() -> str:
+    # Devuelve la ruta del archivo de pistas de prueba
+    return RUTA_PRUEBA_PISTA
 
 # TEST: una reserva libre se acepta (200) y la respuesta no lleva id ni rol
 def test_reserva_libre_se_acepta() -> None:
@@ -114,5 +129,35 @@ def test_reserva_solapa() -> None:
     assert respuesta.json() == {"detail":"Esa franja ya esta reservada"}
     # Limpiar
     app.dependency_overrides.clear()
+
+#Test: consulta de las pistas disponibles cuando un posible usuario quiere reservar una fecha de inicio y fin
+def test_consulta_disponibilidad_pistas() -> None:
+    #dejo limpio el archivo test_reservas
+    guardar_reserva([],RUTA_PRUEBA)
+    #Guardo varias pistas en el archivo de test
+    guardar_pista([Pista(1),Pista(2)],RUTA_PRUEBA_PISTA)
+    #hago el cambio de archivo sobre el que hago el test con dependency_overrides
+    #hay que aplicarlo tanto para el archivo de reservas como el de pistas
+    app.dependency_overrides[get_ruta] = get_ruta_test
+    app.dependency_overrides[get_ruta_pistas] = get_ruta_test_pistas
+    #Creo una reserva para comprobar la funcionalidad 
+    respuesta_reserva = cliente.post("/reserva", json = datos_reserva)
+    #ejecuto consulta de reserva
+    respuesta = cliente.get(
+        "/reserva/disponibilidad", 
+        params = {
+            "fecha_inicio": "2026-10-12T18:00:00",
+            "fecha_fin": "2026-10-12T19:30:00"
+        }
+    )
+    #Comprobamos que la respuesta del guardado de la reserva es 200
+    assert respuesta_reserva.status_code == 200
+    #Comprobamos que la consulta de disponibilidad (el GET) respondió 200
+    assert respuesta.status_code == 200
+    #Comprobamos que la respuesta, la lista es = [{"numero": 2 }]
+    assert respuesta.json() == [{"numero": 2}]
+    #Limpiamos el depends 
+    app.dependency_overrides.clear()
+
 
 
