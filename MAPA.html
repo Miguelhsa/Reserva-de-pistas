@@ -106,8 +106,8 @@ footer{font-size:13px;color:var(--muted)}
     <span class="chip done">regla en dominio ✓</span><span class="sep">→</span>
     <span class="chip done">tests dominio ✓</span><span class="sep">→</span>
     <span class="chip done">orquestador ✓</span><span class="sep">→</span>
-    <span class="chip here">GET con query params · estás aquí</span><span class="sep">→</span>
-    <span class="chip">tests endpoint</span>
+    <span class="chip done">GET /reserva/disponibilidad ✓</span><span class="sep">→</span>
+    <span class="chip here">tests endpoint · estás aquí</span>
   </div>
 
   <div class="track" aria-label="Progreso de la capacidad alta de pista">
@@ -152,7 +152,7 @@ footer{font-size:13px;color:var(--muted)}
     <span><i class="sw p"></i> planificado, sin construir</span>
     <span><i class="sw b"></i> el dato que viaja</span>
   </div>
-  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 9 nov 2026 (orquestador consulta_disponibilidad; cargar_reserva tolera archivo inexistente; 15 tests en verde).</footer>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 9 nov 2026 (GET /reserva/disponibilidad funcionando: query params datetime → orquestador → list[PistaOut]).</footer>
 </div>
 
 <script>
@@ -167,7 +167,7 @@ const lanes=[
 const N={
   cliente:{x:20,y:250,w:130,h:64,t:"Cliente",s:"/docs · Postman",k:"ext"},
   app:{x:190,y:62,w:270,h:48,t:"app.py",s:"crea la app y enchufa routers"},
-  router:{x:190,y:122,w:270,h:70,t:"POST /reserva",s:"routers/reservas.py · solicitar_reserva",s2:"moldes ReservaIn / ReservaOut"},
+  router:{x:190,y:122,w:270,h:70,t:"POST /reserva · GET /disponibilidad",s:"routers/reservas.py · solicitar_reserva",s2:"disponibilidad(inicio, fin) → list[PistaOut]"},
   getruta:{x:190,y:202,w:270,h:40,t:"get_ruta()",s:"entrega la ruta vía Depends"},
   routerPista:{x:190,y:252,w:270,h:48,t:"POST /pista",s:"routers/pistas.py · solicitar_crear_pista"},
   orq:{x:200,y:360,w:250,h:56,t:"reservar()",s:"cargar → crear_reserva → guardar"},

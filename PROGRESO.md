@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-11-09.
+- **Última sesión:** 2026-11-11.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -107,7 +107,15 @@ vive en `README.md`; aquí va el "por dónde vamos".
     fecha_fin=` → `disponibilidad(fecha_inicio: datetime, fecha_fin: datetime, ruta_reservas = Depends(get_ruta), ruta_pistas
     = Depends(get_ruta_pistas)) -> list[PistaOut]`; reutiliza `PistaOut` y `get_ruta_pistas` importados de `routers/pistas.py`;
     traduce cada `Pista` → `PistaOut(numero=pista.numero)`. Probado por él en /docs.
-  - SIGUIENTE: tests del endpoint de disponibilidad (necesitan DOS overrides: reservas y pistas). Luego commit + PR.
+  - PR #15 (orquestador + router GET + cargar_reserva) mergeado por él; `main` al día.
+  - TEST DEL ENDPOINT HECHO (2026-11-11) en `test_endpoint_reservas.py` (decidido: tests junto a su router):
+    `test_consulta_disponibilidad_pistas` → vacía test_reservas.json, guarda [Pista(1), Pista(2)] en test_pistas.json, DOS
+    overrides (`get_ruta`→`get_ruta_test`, `get_ruta_pistas`→`get_ruta_test_pistas`), crea por POST una reserva en la pista 1
+    18:00-19:30 (y comprueba su 200), GET con `params={"fecha_inicio": ..., "fecha_fin": ...}` → 200 y `[{"numero": 2}]`.
+    Suite: 16 en verde (también aislado y sin archivos).
+  - ⭐ CAPACIDAD «CONSULTAR DISPONIBILIDAD» COMPLETA (regla + 3 tests, orquestador, GET, test del endpoint).
+  - SIGUIENTE: commit + push + PR de `feature/tests-disponibilidad`. Luego elegir la próxima capacidad del README
+    (cancelar/modificar reserva — requiere decidir cómo identificar una reserva —, registrar usuario, aviso 24h antes).
 
 ## Bitácora
 
@@ -350,7 +358,17 @@ vive en `README.md`; aquí va el "por dónde vamos".
   de salida con el campo por nombre. Atascos: import `routers.pistas` sin `interfaz.`; `int` en vez de `datetime`;
   `response_model` sin `list`; devolver números sueltos en vez de `PistaOut`; editó pistas.json a mano sin guardar
   (se le recomendó dar de alta por la API).
-- Dudas para la próxima: ninguna. Tests del endpoint de disponibilidad.
+- Dudas para la próxima: ninguna.
+
+### 2026-11-11 — Test del endpoint de disponibilidad: capacidad completa
+- Hecho: test del GET con dos overrides y escenario completo (crea la reserva él mismo). 16 en verde.
+- Aprendió: un archivo de tests por router; un endpoint que lee dos archivos necesita DOS overrides; `cliente.get(...,
+  params={...})` monta la URL con query params (claves = nombres de los parámetros del endpoint); la ruta completa incluye
+  el `prefix` del router; el TestClient no necesita el servidor levantado; mejoró por iniciativa propia el escenario
+  (crear una reserva para que una pista NO salga libre).
+- Atascos: ruta sin `/reserva`; esperaba un dict `{"numero": 2}` en vez de la lista; `-> list[Pista]` en un test; POST de
+  preparación sin comprobar. Pidió solo pistas (no soluciones) para depurar — buena señal de independencia.
+- Dudas para la próxima: ninguna. PR y elegir siguiente capacidad.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 
