@@ -1,8 +1,11 @@
 #aqui viven las clases Pista, usuario, reserva
 # Importa el decorador @dataclass: genera solo el __init__ (para crear objetos) y el == (para compararlos)
-from dataclasses import dataclass
+#Con el campo field podemos dar al campo mas detalles
+from dataclasses import dataclass,field 
 # Importa datetime para representar fechas con hora (inicio y fin de cada reserva)
 from datetime import datetime
+#Queremos generar ID aleatorios y necesitamos la biblioteca 
+from uuid import UUID, uuid4
 
 # CLASE Pista: una pista del club. La distingue su número.
 @dataclass
@@ -33,6 +36,9 @@ class Reserva:
     fecha_inicio: datetime
     # Cuándo termina la reserva
     fecha_fin: datetime
+    #el id que generaremos por cada una de las reservas
+    #el campo id es de tipo UUID; si no me lo dan, llama a uuid4 para fabricar uno nuevo
+    id: UUID = field(default_factory=uuid4)
 
     # MÉTODO: ¿esta reserva (self) se pisa con otra? Devuelve True o False.
     def se_solapa_con(self, otra: Reserva) -> bool:
@@ -102,3 +108,17 @@ def consulta_pistas_libres(pistas_club: list[Pista],fecha_inicio:datetime,fecha_
             pistas_libres.append(pista)
     #3 Después de mirarlas TODAS (fuera del for), devuelvo la lista de pistas libres
     return pistas_libres
+
+#Funcion: Cancelar reserva, recibe un id y la lista de reservas. Si hay una que coincide la borra, devuelve la reserva que hemos borrado
+def cancelar_reserva(id_reserva: UUID, reservas_existentes: list[Reserva]) -> Reserva:
+    #Pasos
+    #1. bucle sobre el listado de reservas_existentes
+    for reserva in reservas_existentes:
+    #2. Si algún id de la lista reservas_existentes es igual a id borra esa elemento
+        if reserva.id == id_reserva:
+            #remove quita de la lista la reserva que ha comparado 
+            reservas_existentes.remove(reserva)
+            #Devuelve la reserva cancelada 
+            return reserva
+    #En caso de que al intentar borrar la reserva no la encontremos, lanzar error
+    raise ValueError("Reserva no encontrada")

@@ -6,6 +6,8 @@ from dataclasses import asdict
 from dominio.modelos import Pista, Usuario, Reserva
 # datetime, para convertir las fechas de texto a fecha al cargar
 from datetime import datetime
+#UUID: para convertir el id guardado (texto) de vuelta a UUID
+from uuid import UUID
 
 # FUNCIÓN: guarda la lista de reservas en un archivo JSON (reescribe el archivo entero).
 def guardar_reserva(reservas: list[Reserva], ruta: str) -> None:
@@ -37,8 +39,8 @@ def cargar_reserva(ruta: str) -> list[Reserva]:
                     objeto_usuario = Usuario(usuario["id"],usuario["nombre"],usuario["apellidos"],usuario["rol"])
                     # Añade el usuario ya convertido a la lista de esta reserva
                     lista_usuarios.append(objeto_usuario)
-                # Reconstruye la Reserva: Pista desde su número, la lista de usuarios y las fechas de texto a datetime
-                lista_reservas.append(Reserva(Pista(linea_reserva["pista"]["numero"]),lista_usuarios,datetime.fromisoformat(linea_reserva["fecha_inicio"]),datetime.fromisoformat(linea_reserva["fecha_fin"])))
+                # Reconstruye la Reserva: Pista desde su número, la lista de usuarios y las fechas de texto a datetime y el id del texto a UUID
+                lista_reservas.append(Reserva(Pista(linea_reserva["pista"]["numero"]),lista_usuarios,datetime.fromisoformat(linea_reserva["fecha_inicio"]),datetime.fromisoformat(linea_reserva["fecha_fin"]),UUID(linea_reserva["id"])))
     # Si el archivo no existe NO es un error: significa "todavía no hay reservas"
     except FileNotFoundError:
         # Devuelve la lista vacía (así el resto del sistema sigue funcionando: todo libre, la 1ª reserva se puede crear)
