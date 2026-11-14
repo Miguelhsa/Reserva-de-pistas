@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-11-11.
+- **Última sesión:** 2026-11-14.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -114,8 +114,23 @@ vive en `README.md`; aquí va el "por dónde vamos".
     18:00-19:30 (y comprueba su 200), GET con `params={"fecha_inicio": ..., "fecha_fin": ...}` → 200 y `[{"numero": 2}]`.
     Suite: 16 en verde (también aislado y sin archivos).
   - ⭐ CAPACIDAD «CONSULTAR DISPONIBILIDAD» COMPLETA (regla + 3 tests, orquestador, GET, test del endpoint).
-  - SIGUIENTE: commit + push + PR de `feature/tests-disponibilidad`. Luego elegir la próxima capacidad del README
-    (cancelar/modificar reserva — requiere decidir cómo identificar una reserva —, registrar usuario, aviso 24h antes).
+  - PR #16 (tests disponibilidad) mergeado; `main` al día. Pendiente: borrar la rama local `feature/tests-disponibilidad` (`git branch -d`).
+  - NUEVA CAPACIDAD: CANCELAR RESERVA (rama `feature/cancelar-reserva`, sin commitear). Elegida por él «para terminar
+    con todo el tema de reservas». Modificar, después (≈ cancelar + crear). Diseño (en README §6), decidido por él:
+    · Identificador: `id` UUID que genera el DOMINIO (`id: UUID = field(default_factory=uuid4)`, último campo de `Reserva`).
+    · Puerta: `DELETE /reserva/{id}` (path param) → 404 si no existe.
+  - HECHO (2026-11-14): `id` en `Reserva` (verificado: cada reserva nace con uno distinto); `cargar_reserva` reconstruye
+    con `UUID(linea_reserva["id"])` (round-trip conserva el id); `guardar_reserva` ya lo guardaba (asdict + default=str).
+    Regla `cancelar_reserva(id_reserva: UUID, reservas_existentes: list[Reserva]) -> Reserva` (remove + return; raise
+    ValueError FUERA del for). 2 tests: `test_cancelar_reserva`, `test_cancelar_reserva_no_hay_reserva_a_eliminar`
+    (uuid4 + pytest.raises + len==2). Suite: 18 en verde.
+  - ⚠️ Pendiente suyo: vaciar/borrar el `reservas.json` real (reservas antiguas sin `id` → KeyError al cargar).
+  - Pendiente pequeño: comentarios de las líneas `remove`/`return` en `cancelar_reserva`; comentario del import UUID en
+    repositorio («generar» → convertir).
+  - SIGUIENTE: ORQUESTADOR `cancelar` (cargar → cancelar_reserva → guardar → devolver la cancelada) → endpoint DELETE
+    (path param `id: UUID`, ValueError → 404) + `ReservaOut` con `id` → tests endpoint.
+  - Ideas apuntadas: «consultar mis reservas» (siguiente capacidad tras cancelar; filtrar «las mías» de verdad requiere
+    registro de usuarios).
 
 ## Bitácora
 
@@ -369,6 +384,20 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - Atascos: ruta sin `/reserva`; esperaba un dict `{"numero": 2}` en vez de la lista; `-> list[Pista]` en un test; POST de
   preparación sin comprobar. Pidió solo pistas (no soluciones) para depurar — buena señal de independencia.
 - Dudas para la próxima: ninguna. PR y elegir siguiente capacidad.
+
+### 2026-11-13/14 — Cancelar reserva: diseño (id UUID) + dominio + persistencia + regla con tests
+- Hecho: diseño completo razonado por él (identificación, quién genera el id, verbo, código, dónde viaja el id); README
+  §4 y §6 puestos al día (por el mentor, a petición suya); id UUID en Reserva; persistencia del id; regla + 2 tests.
+- Aprendió: identificador natural (pista+inicio, único por la regla de no solapar) vs id propio (sobrevive a modificar);
+  autoincremento de BBDD vs UUID (adivinable vs no; quién lo genera); DELETE + 404; path (dirección de UNA cosa) vs query
+  (filtrar) vs cuerpo (datos para crear/cambiar); valor por defecto (DNI al nacer vs enseñar el que tienes);
+  `field(default_factory=uuid4)` vs `= uuid4()` (uno para todos); `UUID(texto)` como `datetime.fromisoformat`; `remove` +
+  `return` corta el bucle; `with` (portero que hace algo al entrar y al salir); `raise` lanza vs `pytest.raises` espera.
+- Atascos: quería que la regla recibiera solo el id (el dominio no carga datos); confundió recorrido del socio («mis
+  reservas» → elegir) con la regla de cancelar; `id: UUID = uuid4` dentro de una llamada (`:` declara vs `=` valor);
+  `reserva["id"]` en un objeto; `raise` dentro del for (crónico); `remove(reserva.id)`; dos tests con el MISMO nombre
+  (el primero no se ejecutaba) y pasar la reserva entera en vez de `.id` → verde que mentía. Lo detectó contando tests.
+- Dudas para la próxima: ninguna. Orquestador de cancelar.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 

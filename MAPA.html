@@ -107,7 +107,8 @@ footer{font-size:13px;color:var(--muted)}
     <span class="chip done">tests dominio ✓</span><span class="sep">→</span>
     <span class="chip done">orquestador ✓</span><span class="sep">→</span>
     <span class="chip done">GET /reserva/disponibilidad ✓</span><span class="sep">→</span>
-    <span class="chip here">tests endpoint · estás aquí</span>
+    <span class="chip done">tests endpoint ✓</span><span class="sep">→</span>
+    <span class="chip done">COMPLETA ✓</span>
   </div>
 
   <div class="track" aria-label="Progreso de la capacidad alta de pista">
@@ -152,7 +153,7 @@ footer{font-size:13px;color:var(--muted)}
     <span><i class="sw p"></i> planificado, sin construir</span>
     <span><i class="sw b"></i> el dato que viaja</span>
   </div>
-  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 9 nov 2026 (GET /reserva/disponibilidad funcionando: query params datetime → orquestador → list[PistaOut]).</footer>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 11 nov 2026 (consultar disponibilidad COMPLETA: test del GET con dos dependency_overrides; 16 tests en verde).</footer>
 </div>
 
 <script>
@@ -226,7 +227,7 @@ const flowPista=[
 const depsStep=[{deps:true,L:"imports",title:"Quién importa a quién",text:"Las flechas negras son imports, no viajes de datos. La interfaz importa al dominio y a la persistencia; la persistencia importa al dominio para reconstruir objetos. El dominio no importa a nadie y nadie importa a la interfaz.",why:"Todas las flechas apuntan hacia el dominio, el centro estable. Por eso puedes cambiar FastAPI o JSON sin tocar las reglas del negocio. Ojo: tu README solo dibuja interfaz → dominio ← persistencia, pero el orquestador también importa a la persistencia. ¿Lo añadirías?"}];
 const testSteps=[
   {hl:["modelos","crearRes","libres","crearPista"],box:"test_dominio.py · 8 tests",L:"tests",title:"test_dominio.py",text:"Prueba solo las reglas: se_solapa_con (sí y no), crear_reserva, crear_pista (nuevo y repetido) y consulta_pistas_libres (pista reservada no sale, todo ocupado → ninguna, sin reservas → todas).",why:"Sin archivos ni HTTP. Son los tests más rápidos y los más fiables, porque el dominio no depende de nada.",st:"ok"},
-  {hl:["cliente","router","getruta","orq","crearRes","cargarRes","guardarRes","jsonRes"],box:"test_endpoint_reservas.py · 3 tests",L:"tests",title:"test_endpoint_reservas.py",text:"TestClient hace de cliente y recorre la cadena entera de /reserva: libre → 200, pegada → 200, solapa → 409. dependency_overrides cambia la ruta por test_reservas.json.",why:"Comprueba que todas las piezas encajan. Si falla, el fallo puede estar en cualquier capa: por eso conviene tener también tests por capa.",st:"ok"},
+  {hl:["cliente","router","getruta","orq","crearRes","cargarRes","guardarRes","jsonRes"],box:"test_endpoint_reservas.py · 4 tests",L:"tests",title:"test_endpoint_reservas.py",text:"TestClient hace de cliente y recorre la cadena entera de /reserva: libre → 200, pegada → 200, solapa → 409. dependency_overrides cambia la ruta por test_reservas.json.",why:"Comprueba que todas las piezas encajan. Si falla, el fallo puede estar en cualquier capa: por eso conviene tener también tests por capa.",st:"ok"},
   {hl:["cliente","routerPista","orqPista","crearPista","cargarPista","guardarPista","jsonPista"],box:"test_endpoint_pistas.py · 3 tests",L:"tests",title:"test_endpoint_pistas.py",text:"TestClient recorre la cadena entera de /pista: pista nueva → 200 + {numero}, número repetido → 409 (el propio test crea antes la pista), texto en vez de número → 422. dependency_overrides[get_ruta_pistas] = get_ruta_pistas_test desvía todo a test_pistas.json.",why:"Cada test monta su escenario (vacía el archivo y crea lo que necesita), así que pasan solos y en cualquier orden. También cubren el orquestador de pistas, que no tiene test propio.",st:"ok"},
   {hl:["cargarPista","guardarPista","jsonPista"],box:"test_persistencia.py · 1 test",L:"tests",title:"test_persistencia.py",text:"test_pistas_guardadas_se_cargan_iguales: prepara pistas_originales (dos Pista), las guarda en test_persistencia.json, las carga y hace assert de que salen iguales. Al final deja el archivo vacío.",why:"Prueba solo la columna de persistencia, sin HTTP y sin reglas. Si mañana cambias JSON por Postgres, este test te dice al momento si la ida y vuelta sigue funcionando. Usa dos pistas para que un fallo que guarde solo una se note.",st:"ok"}
 ];

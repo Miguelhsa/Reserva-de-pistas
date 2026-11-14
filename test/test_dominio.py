@@ -1,9 +1,11 @@
 # Clases y funciones del dominio que se van a probar
-from dominio.modelos import Pista, Usuario, Reserva, crear_reserva, crear_pista, consulta_pistas_libres
+from dominio.modelos import Pista, Usuario, Reserva, crear_reserva, crear_pista, consulta_pistas_libres,cancelar_reserva
 # Para crear las fechas de las reservas de prueba
 from datetime import datetime
 # pytest: para pytest.raises (comprobar que algo lanza un error)
 import pytest
+#Queremos generar ID aleatorios y necesitamos la biblioteca 
+from uuid import UUID,uuid4
 
 #cree dos reservas de la misma pista que se pisan (como las que montabas en el REPL),
 #llame a a.se_solapa_con(b),
@@ -122,3 +124,34 @@ def test_franja_sin_reservas_devuelve_todas() -> None:
         FIN_FRANJA_LIBRE,
         RESERVAS_EXISTENTES
         ) == [Pista(1),Pista(2)]  
+
+#TEST: Cancelar reserva, devuelve la reserva que hemos cancelado
+def test_cancelar_reserva () -> None:
+    # Preparar: dos reservas del sábado 14 a las 18:00, una en cada pista (cada una nace con su propio id)
+    reserva_pista_1 = Reserva(Pista(1), [], datetime(2026, 11, 14, 18, 0), datetime(2026, 11, 14, 19, 30))
+    reserva_pista_2 = Reserva(Pista(2), [], datetime(2026, 11, 14, 18, 0), datetime(2026, 11, 14, 19, 30))
+    # La lista de reservas existentes, como la tendría el orquestador después de cargarlas
+    existentes = [reserva_pista_1, reserva_pista_2]
+    #comprobar que la reserva que hemos borrado es igual a la reserva que hemos introducido
+    #para borrar
+    #comprobar que la funcion cancelar_reserva devuelve la reserva cancelada
+    assert cancelar_reserva(reserva_pista_1.id,existentes) == reserva_pista_1
+    #comprobar que esa reserva cancelada ya no esta en la lista
+    assert reserva_pista_1 not in existentes
+    #comprobamos que la otra reserva de la lista SI esta 
+    assert reserva_pista_2 in existentes
+
+#TEST: Cancelar reserva que no existe, devuelve un error
+def test_cancelar_reserva_no_hay_reserva_a_eliminar () -> None:
+    # Preparar: dos reservas del sábado 14 a las 18:00, una en cada pista (cada una nace con su propio id)
+    reserva_pista_1 = Reserva(Pista(1), [], datetime(2026, 11, 14, 18, 0), datetime(2026, 11, 14, 19, 30))
+    reserva_pista_2 = Reserva(Pista(2), [], datetime(2026, 11, 14, 18, 0), datetime(2026, 11, 14, 19, 30))
+    # La lista de reservas existentes, como la tendría el orquestador después de cargarlas
+    existentes = [reserva_pista_1, reserva_pista_2]
+    # Preparar: un id que NO es de ninguna reserva (uuid4 fabrica uno nuevo, imposible que coincida)
+    id_inexistente = uuid4()
+    #Lo que hay dentro del with tiene que lanzar un ValueError
+    with pytest.raises(ValueError):
+        cancelar_reserva(id_inexistente,existentes)
+    #compruebo que hay dos elementos en la lista
+    assert len(existentes) == 2
