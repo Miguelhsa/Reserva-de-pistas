@@ -10,8 +10,9 @@ from persistencia.repositorio import guardar_reserva,guardar_pista
 from interfaz.routers.pistas import get_ruta_pistas
 # Clase Pista del dominio: guardar_pista necesita objetos Pista para preparar el club de prueba
 # (al endpoint se le habla en JSON/URL; Pista solo se usa para montar el escenario)
-from dominio.modelos import Pista
-
+from dominio.modelos import Pista, Reserva
+#Usamos como tipo UUID
+from uuid import UUID, uuid4
 
 # Crea el "navegador falso": un cliente que hace peticiones HTTP (POST, GET...) a nuestra app
 # directamente en memoria, sin arrancar el servidor con fastapi dev. Así los tests pueden
@@ -37,7 +38,7 @@ respuesta_esperada = {
         {"nombre": "Carlos", "apellidos": "Hidalgo"}
     ],
     "fecha_inicio": "2026-10-12T18:00:00",
-    "fecha_fin": "2026-10-12T19:30:00",
+    "fecha_fin": "2026-10-12T19:30:00"
 }
 
 # Reserva pegada a la anterior: empieza a las 19:30, justo cuando acaba la otra
@@ -88,8 +89,13 @@ def test_reserva_libre_se_acepta() -> None:
     respuesta = cliente.post("/reserva",json = datos_reserva )
     # Comprobar: se aceptó
     assert respuesta.status_code == 200
+    #Para poder comparar tengo que quitar el id
+    respuesta_json = respuesta.json()
+    id = respuesta_json.pop("id")
+    #Compruebo que id es un str con isinstance
+    assert isinstance(id,str)
     # Comprobar: la respuesta tiene la forma de ReservaOut
-    assert respuesta.json() == respuesta_esperada
+    assert respuesta_json == respuesta_esperada
     # Limpiar: quita la sustitución para no afectar a otros tests
     app.dependency_overrides.clear()
 
@@ -159,5 +165,63 @@ def test_consulta_disponibilidad_pistas() -> None:
     #Limpiamos el depends 
     app.dependency_overrides.clear()
 
+#Tests de DELETE /reserva/{id}: uno por caso, para que el nombre del que falle diga qué se ha roto
+#  200 -> la reserva existe y se cancela | 404 -> el id no es de ninguna reserva | 422 -> el id no tiene forma de UUID
+#TEST: cancelar una reserva que existe -> 200
+def test_cancelar_reserva_200() -> None:
+    #Pasos: 
+    #hago el cambio de archivo sobre el que hago el test con dependency_overrides
+    app.dependency_overrides[get_ruta] = get_ruta_test
+    #1. Tenemos que dejar limpio el archivo de guardado
+    guardar_reserva([],RUTA_PRUEBA)
+    #2. Guardamos una nueva reserva, en este caso usamos un post que convierte directamente los datos 
+    #json en objeto reserva
+    respuesta_creacion_reserva = cliente.post("/reserva", json= datos_reserva)
+    #Comprobamos que la respuesta es correcta
+    assert respuesta_creacion_reserva.status_code == 200
+    #obtenemos el id de la reserva
+    id_respuesta_creacion_reserva = respuesta_creacion_reserva.json()["id"]
+    #Hacemos el delete de ese id que acabamos de obtener
+    respuesta_borrado = cliente.delete(f"/reserva/{id_respuesta_creacion_reserva}")
+    #la respuesta de borrado ha tenido que ser 200
+    assert respuesta_borrado.status_code == 200
+    #Limpiar: quitamos el aviso a FastAPI para no afectar a otros tests
+    app.dependency_overrides.clear()
 
+#TEST: cancelar un id que no es de ninguna reserva -> 404 (el nuestro, no el de "ruta no encontrada")
+def test_cancelar_reserva_404() -> None:
+    #Pasos:
+    #hago el cambio de archivo sobre el que hago el test con dependency_overrides
+    app.dependency_overrides[get_ruta] = get_ruta_test
+    #1. Dejamos limpio el archivo
+    guardar_reserva([],RUTA_PRUEBA)
+    #2. Creamos una reserva por POST: así el archivo NO está vacío y probamos "hay reservas, pero no ESA"
+    respuesta_esperada = cliente.post("/reserva", json = datos_reserva)
+    #3. comprobamos que la respuesta es 200
+    assert respuesta_esperada.status_code == 200
+    #fabricamos un id válido (forma de UUID) que no es de ninguna reserva
+    id_inexistente = uuid4()
+    #intentamos cancelar ese id inexistente
+    respuesta_borrado = cliente.delete(f"/reserva/{id_inexistente}")
+    #respuesta de este borrado tiene que ser 404
+    assert respuesta_borrado.status_code == 404
+    #comprobamos que es NUESTRO 404 (el mensaje del endpoint), no el "Not Found" de una ruta mal escrita
+    assert respuesta_borrado.json() == {'detail': 'id de reserva no existe'}
+    #Limpiar: quitamos el aviso a FastAPI para no afectar a otros tests
+    app.dependency_overrides.clear()
 
+#TEST: cancelar con un id que no tiene forma de UUID -> 422 (lo rechaza FastAPI antes de llegar a nuestro código)
+def test_cancelar_reserva_422() -> None:
+    #Pasos:
+    #1. hago el cambio de archivo sobre el que hago el test con dependency_overrides
+    app.dependency_overrides[get_ruta] = get_ruta_test
+    #2. dejo el archivo de guardado limpio
+    guardar_reserva([],RUTA_PRUEBA)
+    #un texto que NO tiene forma de UUID
+    valor_incorrecto = "valor_incorrecto"
+    #intentamos cancelar con ese valor en la ruta
+    respuesta_esperada = cliente.delete(f"/reserva/{valor_incorrecto}")
+    #la respuesta tiene que ser 422: FastAPI no puede convertir el texto en UUID
+    assert respuesta_esperada.status_code == 422
+    #Limpiar: quitamos el aviso a FastAPI para no afectar a otros tests
+    app.dependency_overrides.clear()

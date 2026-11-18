@@ -1,9 +1,11 @@
 # Persistencia: cargar y guardar las reservas y las pistas en su archivo
 from persistencia.repositorio import cargar_reserva, guardar_reserva, cargar_pista, guardar_pista
 #Dominio importo lo necesario para realizar la orquestacion
-from dominio.modelos import crear_reserva, Reserva, Pista, crear_pista, consulta_pistas_libres
-# Importa datetime para representar fechas con hora (inicio y fin de cada reserva)
+from dominio.modelos import crear_reserva, Reserva, Pista, crear_pista, consulta_pistas_libres, cancelar_reserva
+# Importa datetime para representar fechas con hora (inicio y fin de cada reserva)  
 from datetime import datetime
+#Usamos como tipo UUID
+from uuid import UUID
 
 
 # FUNCIÓN (orquestador): coordina el flujo de reservar: cargar -> decidir -> guardar. Ella no decide ni guarda nada.
@@ -41,3 +43,18 @@ def consulta_disponibilidad(fecha_inicio: datetime, fecha_fin: datetime, ruta_re
     lista_reservas = cargar_reserva(ruta_reservas)
     #Llamamos a consultar_pistas_libres y le pasamos los parámetros necesarios
     return consulta_pistas_libres(lista_pistas,fecha_inicio,fecha_fin,lista_reservas)
+
+#Funcion (orquestador): coordina la eliminacion de la reserva
+#Necesita cargar las reservas, pasarselas a la funcion cancelar_reserva
+def cancelar_reserva_orquestador(ruta:str,id_reserva:UUID) -> Reserva:
+    #Pasos:
+    #1. llamamos a reservas para obtener el listado que metemos en una variable
+    listado_reservas = cargar_reserva(ruta)
+    #2. llamamos a cancelar reservas y le pasamos el listado. Devuelve la reserva eliminada
+    reserva_borrada = cancelar_reserva(id_reserva,listado_reservas)
+    #3. con cancelar_reserva hemos quitado de la lista de reservas a reserva, pero hay que guarda
+    #el nuevo listado 
+    guardar_reserva(listado_reservas,ruta)
+    #4. retornamos la reserva borrada
+    return reserva_borrada
+
