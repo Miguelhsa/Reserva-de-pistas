@@ -101,6 +101,16 @@ footer{font-size:13px;color:var(--muted)}
     <p>Tres capas: <b>interfaz → dominio ← persistencia</b>. Elige un flujo y avanza paso a paso: la pelota amarilla es el dato, y en cada paso verás qué forma tiene y por qué está en esa capa.</p>
   </header>
 
+  <div class="track" aria-label="Progreso de la capacidad cancelar reserva">
+    <span class="lbl">Cancelar reserva:</span>
+    <span class="chip done">id UUID en Reserva ✓</span><span class="sep">→</span>
+    <span class="chip done">persistencia del id ✓</span><span class="sep">→</span>
+    <span class="chip done">regla + 2 tests ✓</span><span class="sep">→</span>
+    <span class="chip done">orquestador ✓</span><span class="sep">→</span>
+    <span class="chip done">ReservaOut con id + DELETE /reserva/{id} ✓</span><span class="sep">→</span>
+    <span class="chip here">tests endpoint · estás aquí</span>
+  </div>
+
   <div class="track" aria-label="Progreso de la capacidad consultar disponibilidad">
     <span class="lbl">Consultar disponibilidad:</span>
     <span class="chip done">regla en dominio ✓</span><span class="sep">→</span>
@@ -153,7 +163,7 @@ footer{font-size:13px;color:var(--muted)}
     <span><i class="sw p"></i> planificado, sin construir</span>
     <span><i class="sw b"></i> el dato que viaja</span>
   </div>
-  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 11 nov 2026 (consultar disponibilidad COMPLETA: test del GET con dos dependency_overrides; 16 tests en verde).</footer>
+  <footer>Construido a partir del código de la rama <code>feature/persistencia-pistas</code>. El README sigue siendo el mapa oficial; esto es su versión en movimiento. Última actualización: 15 nov 2026 (DELETE /reserva/{id} funcionando: 200 / 404 / 422; ReservaOut devuelve el id).</footer>
 </div>
 
 <script>
@@ -168,13 +178,15 @@ const lanes=[
 const N={
   cliente:{x:20,y:250,w:130,h:64,t:"Cliente",s:"/docs · Postman",k:"ext"},
   app:{x:190,y:62,w:270,h:48,t:"app.py",s:"crea la app y enchufa routers"},
-  router:{x:190,y:122,w:270,h:70,t:"POST /reserva · GET /disponibilidad",s:"routers/reservas.py · solicitar_reserva",s2:"disponibilidad(inicio, fin) → list[PistaOut]"},
+  router:{x:190,y:122,w:270,h:70,t:"POST · GET /disponibilidad · DELETE /{id}",s:"routers/reservas.py · ReservaOut lleva id",s2:"DELETE: ValueError → 404 · id mal formado → 422"},
   getruta:{x:190,y:202,w:270,h:40,t:"get_ruta()",s:"entrega la ruta vía Depends"},
   routerPista:{x:190,y:252,w:270,h:48,t:"POST /pista",s:"routers/pistas.py · solicitar_crear_pista"},
   orq:{x:200,y:360,w:250,h:56,t:"reservar()",s:"cargar → crear_reserva → guardar"},
   orqPista:{x:200,y:428,w:250,h:56,t:"dar_de_alta_pista()",s:"cargar → crear_pista → guardar → return"},
-  orqLibres:{x:200,y:496,w:250,h:72,t:"consulta_disponibilidad()",s:"carga pistas + reservas →",s2:"consulta_pistas_libres → return (no guarda)"},
-  modelos:{x:505,y:62,w:220,h:64,t:"modelos.py",s:"Pista · Usuario · Reserva",s2:"dataclasses"},
+  orqLibres:{x:200,y:496,w:250,h:48,t:"consulta_disponibilidad()",s:"carga 2 → consulta_pistas_libres → return"},
+  orqCancelar:{x:200,y:552,w:250,h:30,t:"cancelar_reserva_orquestador()"},
+  modelos:{x:505,y:62,w:220,h:64,t:"modelos.py",s:"Pista · Usuario · Reserva",s2:"Reserva.id = UUID (lo genera el dominio)"},
+  cancelarRes:{x:505,y:418,w:220,h:44,t:"cancelar_reserva()",s:"por id: la quita o ValueError"},
   crearRes:{x:505,y:190,w:220,h:78,t:"crear_reserva()",s:"choca_con_existentes()",s2:"→ se_solapa_con()"},
   libres:{x:505,y:330,w:220,h:78,t:"consulta_pistas_libres()",s:"por cada pista: reserva hipotética",s2:"→ si NO choca_con_existentes, libre"},
   crearPista:{x:505,y:470,w:220,h:72,t:"crear_pista()",s:"número repetido →",s2:"ValueError"},
@@ -226,7 +238,7 @@ const flowPista=[
 ];
 const depsStep=[{deps:true,L:"imports",title:"Quién importa a quién",text:"Las flechas negras son imports, no viajes de datos. La interfaz importa al dominio y a la persistencia; la persistencia importa al dominio para reconstruir objetos. El dominio no importa a nadie y nadie importa a la interfaz.",why:"Todas las flechas apuntan hacia el dominio, el centro estable. Por eso puedes cambiar FastAPI o JSON sin tocar las reglas del negocio. Ojo: tu README solo dibuja interfaz → dominio ← persistencia, pero el orquestador también importa a la persistencia. ¿Lo añadirías?"}];
 const testSteps=[
-  {hl:["modelos","crearRes","libres","crearPista"],box:"test_dominio.py · 8 tests",L:"tests",title:"test_dominio.py",text:"Prueba solo las reglas: se_solapa_con (sí y no), crear_reserva, crear_pista (nuevo y repetido) y consulta_pistas_libres (pista reservada no sale, todo ocupado → ninguna, sin reservas → todas).",why:"Sin archivos ni HTTP. Son los tests más rápidos y los más fiables, porque el dominio no depende de nada.",st:"ok"},
+  {hl:["modelos","crearRes","libres","cancelarRes","crearPista"],box:"test_dominio.py · 10 tests",L:"tests",title:"test_dominio.py",text:"Prueba solo las reglas: se_solapa_con (sí y no), crear_reserva, crear_pista (nuevo y repetido) y consulta_pistas_libres (pista reservada no sale, todo ocupado → ninguna, sin reservas → todas).",why:"Sin archivos ni HTTP. Son los tests más rápidos y los más fiables, porque el dominio no depende de nada.",st:"ok"},
   {hl:["cliente","router","getruta","orq","crearRes","cargarRes","guardarRes","jsonRes"],box:"test_endpoint_reservas.py · 4 tests",L:"tests",title:"test_endpoint_reservas.py",text:"TestClient hace de cliente y recorre la cadena entera de /reserva: libre → 200, pegada → 200, solapa → 409. dependency_overrides cambia la ruta por test_reservas.json.",why:"Comprueba que todas las piezas encajan. Si falla, el fallo puede estar en cualquier capa: por eso conviene tener también tests por capa.",st:"ok"},
   {hl:["cliente","routerPista","orqPista","crearPista","cargarPista","guardarPista","jsonPista"],box:"test_endpoint_pistas.py · 3 tests",L:"tests",title:"test_endpoint_pistas.py",text:"TestClient recorre la cadena entera de /pista: pista nueva → 200 + {numero}, número repetido → 409 (el propio test crea antes la pista), texto en vez de número → 422. dependency_overrides[get_ruta_pistas] = get_ruta_pistas_test desvía todo a test_pistas.json.",why:"Cada test monta su escenario (vacía el archivo y crea lo que necesita), así que pasan solos y en cualquier orden. También cubren el orquestador de pistas, que no tiene test propio.",st:"ok"},
   {hl:["cargarPista","guardarPista","jsonPista"],box:"test_persistencia.py · 1 test",L:"tests",title:"test_persistencia.py",text:"test_pistas_guardadas_se_cargan_iguales: prepara pistas_originales (dos Pista), las guarda en test_persistencia.json, las carga y hace assert de que salen iguales. Al final deja el archivo vacío.",why:"Prueba solo la columna de persistencia, sin HTTP y sin reglas. Si mañana cambias JSON por Postgres, este test te dice al momento si la ida y vuelta sigue funcionando. Usa dos pistas para que un fallo que guarde solo una se note.",st:"ok"}

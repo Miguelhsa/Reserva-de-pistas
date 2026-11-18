@@ -8,7 +8,7 @@ vive en `README.md`; aquí va el "por dónde vamos".
 - **Proyecto:** motor de reservas de pista de pádel. Backend por capas (interfaz / dominio / persistencia).
 - **Regla de negocio central:** una franja de una pista no se puede reservar dos veces (no solapar).
 - **Fase:** DOMINIO completo (modelos, regla `se_solapa_con` + `choca_con_existentes`, `crear_reserva`) y PERSISTENCIA completa (`guardar` + `cargar` a JSON en `persistencia/repositorio.py`), verificada con round-trip (guardar → cargar → `==` da True). Fase 0 hecha.
-- **Última sesión:** 2026-11-14.
+- **Última sesión:** 2026-11-18.
 - **Repo:** github.com/Miguelhsa/Reserva-de-pistas (rama `main`). `crear_reserva` fusionada por PR.
 - **Flujo de trabajo:** en equipo — rama de feature + Pull Request para cada cosa nueva (no picar directo en `main`).
 - **Persistencia:** FUSIONADA por PR (guardar + cargar en persistencia/repositorio.py).
@@ -124,11 +124,28 @@ vive en `README.md`; aquí va el "por dónde vamos".
     Regla `cancelar_reserva(id_reserva: UUID, reservas_existentes: list[Reserva]) -> Reserva` (remove + return; raise
     ValueError FUERA del for). 2 tests: `test_cancelar_reserva`, `test_cancelar_reserva_no_hay_reserva_a_eliminar`
     (uuid4 + pytest.raises + len==2). Suite: 18 en verde.
-  - ⚠️ Pendiente suyo: vaciar/borrar el `reservas.json` real (reservas antiguas sin `id` → KeyError al cargar).
-  - Pendiente pequeño: comentarios de las líneas `remove`/`return` en `cancelar_reserva`; comentario del import UUID en
-    repositorio («generar» → convertir).
-  - SIGUIENTE: ORQUESTADOR `cancelar` (cargar → cancelar_reserva → guardar → devolver la cancelada) → endpoint DELETE
-    (path param `id: UUID`, ValueError → 404) + `ReservaOut` con `id` → tests endpoint.
+  - PR #17 mergeado. `reservas.json` real vaciado (`[]`). Rama actual: `feature/orquestador-cancelar` (sin commitear).
+  - ORQUESTADOR HECHO (2026-11-15): `cancelar_reserva_orquestador(ruta: str, id_reserva: UUID) -> Reserva`: cargar →
+    `reserva_borrada = cancelar_reserva(...)` → `guardar_reserva(...)` → `return reserva_borrada`. Verificado (mentor): el
+    archivo queda sin la reserva y conserva el id de las demás; id inexistente → ValueError y archivo intacto.
+  - `ReservaOut` con `id: UUID` + `id=reserva_nueva_guardar.id` en `solicitar_reserva`. Test `test_reserva_libre_se_acepta`
+    adaptado: `respuesta_json.pop("id")` y compara el resto. 18 en verde.
+  - Pendiente pequeño: en ese test cambiar `isinstance(id, str)` por `UUID(id_reserva)` (comprueba forma de UUID) y renombrar
+    `id` → `id_reserva`.
+  - ENDPOINT HECHO (2026-11-15): `DELETE /reserva/{id_reserva}` → `solicitar_cancelar_reserva(id_reserva: UUID, ruta_reservas
+    = Depends(get_ruta)) -> ReservaOut`: try orquestador → except ValueError → 404; traduce a `ReservaOut` (pista.numero,
+    UsuarioOut con nombre=, id). Verificado: existe → 200 y se borra del archivo; otra vez → 404; inexistente → 404;
+    «hola» → 422. Pendiente pequeño: sacar la traducción y el return FUERA del try; comentario del for.
+  - TESTS DEL DELETE HECHOS (2026-11-18) en `test_endpoint_reservas.py`: `test_cancelar_reserva_200` (POST de preparación →
+    `respuesta.json()["id"]` → `cliente.delete(f"/reserva/{id}")` → 200), `test_cancelar_reserva_404` (uuid4 → 404 + assert
+    del MENSAJE para que sea nuestro 404 y no el "Not Found" de ruta mal escrita), `test_cancelar_reserva_422` ("valor_incorrecto"
+    → 422). Comentarios repasados por el mentor. Suite: 21 en verde.
+  - ⭐ CAPACIDAD «CANCELAR RESERVA» COMPLETA (id UUID + regla + persistencia + orquestador + DELETE + tests).
+  - Pendientes pequeños: sacar traducción y return FUERA del try en `solicitar_cancelar_reserva`; renombrar
+    `respuesta_esperada` (respuesta real) en tests 404/422; en el test del 200 se puede añadir un 2º DELETE → 404 (prueba
+    que se borró de verdad); en `test_reserva_libre_se_acepta`, `isinstance(id, str)` → `UUID(id_reserva)`.
+  - SIGUIENTE: commit + push + PR de `feature/orquestador-cancelar`. Luego elegir capacidad: modificar reserva (≈ cancelar +
+    crear, por id con PUT /reserva/{id}), «consultar mis reservas», registrar usuario o aviso 24h.
   - Ideas apuntadas: «consultar mis reservas» (siguiente capacidad tras cancelar; filtrar «las mías» de verdad requiere
     registro de usuarios).
 
@@ -397,7 +414,30 @@ vive en `README.md`; aquí va el "por dónde vamos".
   reservas» → elegir) con la regla de cancelar; `id: UUID = uuid4` dentro de una llamada (`:` declara vs `=` valor);
   `reserva["id"]` en un objeto; `raise` dentro del for (crónico); `remove(reserva.id)`; dos tests con el MISMO nombre
   (el primero no se ejecutaba) y pasar la reserva entera en vez de `.id` → verde que mentía. Lo detectó contando tests.
-- Dudas para la próxima: ninguna. Orquestador de cancelar.
+- 2026-11-15: orquestador de cancelar + id en la salida. Aprendió: sin `guardar_reserva` la cancelación solo ocurre en la
+  «fotocopia» (fallo silencioso, demostrado ejecutando); guardar lo que devuelve la regla en una variable para poder
+  guardar antes del `return`; `default=str` no cambia el formato (sigue siendo JSON): convierte a texto lo que JSON no
+  entiende (datetime, UUID) — por eso cada `guardar_*` guarda lo suyo; en Pydantic el nombre antes del `=` debe ser el del
+  campo (`id_reserva=` → «Field required: id»); `.pop("clave")` saca una clave de un dict; un valor aleatorio no se compara
+  con un fijo: se separa y se comprueba su forma. Atascos: faltaba guardar; `guardar_pista` en vez de `guardar_reserva`.
+- 2026-11-15 (tarde): endpoint DELETE. Aprendió: path param = llave en la ruta + parámetro con el MISMO nombre (si no
+  coinciden, FastAPI lo trata como query → 422 «Field required»); FastAPI valida el UUID de la ruta (422); devolver un objeto
+  del dominio con response_model falla si los campos no encajan (pista objeto vs int) → traducir siempre a ...Out. Atascos:
+  sin try/except (500); response_model=Reserva; ruta /cancelar/{id}; nombre igual a la regla; no guardar ni devolver el
+  resultado; Pydantic por posición (ReservaOut y UsuarioOut) — punto flaco crónico, se le dio la línea de UsuarioOut.
+- Noche: empezó los tests del DELETE; repaso de qué preparar (por la puerta, no con el dict) y cómo montar la URL (f-string
+  con el prefijo).
+- Dudas para la próxima: ninguna.
+
+### 2026-11-18 — Tests del DELETE: capacidad «cancelar» completa
+- Hecho: 3 tests del DELETE, uno por caso. 21 en verde.
+- Aprendió: ejecutar un solo test (`archivo::función`), `-s` para ver prints, `-k` para filtrar por nombre; leer una clave
+  de un dict con `["clave"]` (vs `{}` crear dict vs f-string); f-string para meter el id en la URL; dos 404 distintos (el
+  nuestro vs ruta inexistente) → comprobar el mensaje; UUID válido-inexistente (404, `uuid4()`) vs texto sin forma de UUID
+  (422); `"...+1"` dentro de comillas es texto, no suma.
+- Atascos: preparar con `guardar_reserva([dict])` (pide objetos) → POST por la puerta; URL sin prefijo `/reserva` (404);
+  `{id}` en vez de `["id"]`; intentó «id+1» para el 404; faltaban `.clear()`.
+- Dudas para la próxima: ninguna. PR y elegir siguiente capacidad.
 
 ## Conceptos afianzados (demostrados, no solo leídos)
 

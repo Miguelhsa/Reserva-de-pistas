@@ -7,9 +7,11 @@ from fastapi import APIRouter, HTTPException, Depends
 # Clases del dominio, para traducir lo que entra a objetos de la cocina
 from dominio.modelos import Pista, Usuario, Reserva
 # El orquestador, al que el endpoint le pasa la reserva, consulta_disponibilidad
-from interfaz.orquestador import reservar, consulta_disponibilidad
+from interfaz.orquestador import reservar, consulta_disponibilidad, cancelar_reserva_orquestador
 #Importamos Pistaout que será lo que entregaremos en el endpoint y get_ruta_pistas
 from interfaz.routers.pistas import get_ruta_pistas, PistaOut
+#Usamos como tipo UUID
+from uuid import UUID
 
 # Archivo donde se guardan las reservas reales
 RUTA_RESERVAS = "reservas.json"
@@ -54,6 +56,8 @@ class ReservaOut(BaseModel):
     # Fechas de la reserva confirmada
     fecha_inicio: datetime
     fecha_fin: datetime
+    #id de la reserva
+    id: UUID
 
 # ENDPOINT POST /reserva; response_model fija el contrato de salida (lo que se ve en /docs y lo que se deja salir)
 @router.post("",response_model=ReservaOut)
@@ -103,7 +107,8 @@ def solicitar_reserva(nueva_reserva: ReservaIn, ruta: str = Depends(get_ruta)) -
         pista = pista_reserva.numero,
         usuarios= usuarios_reserva_out,
         fecha_inicio = reserva_nueva_guardar.fecha_inicio,
-        fecha_fin= reserva_nueva_guardar.fecha_fin
+        fecha_fin= reserva_nueva_guardar.fecha_fin,
+        id = reserva_nueva_guardar.id
     )
     # Devuelve la respuesta: FastAPI la convierte en JSON
     return reserva_nueva_out
@@ -120,3 +125,34 @@ def disponibilidad(fecha_inicio:datetime, fecha_fin:datetime, ruta_reservas:str 
         pistas_libres.append(PistaOut(numero= pista.numero))
     #retorno la lista con las pistas
     return pistas_libres
+
+#endpoint para eliminar reservas a través del id de la reserva, devuelve una ReservaOut
+@router.delete("/{id_reserva}",response_model= ReservaOut)
+def solicitar_cancelar_reserva(id_reserva:UUID,ruta_reservas:str = Depends(get_ruta)) -> ReservaOut:
+    #hace la llamada a la funcion cancelar_reserva_orquestador a través de un try
+    try:
+        #El resultado de la funcion cancelar_reserva lo tengo que convertir en 
+        #pista -> este también es un objeto
+        #usuarioOut --> nombre , apellidos
+        #fecha_inicio
+        #fecha_fin
+        #id
+        reserva_cancelada = cancelar_reserva_orquestador(ruta_reservas, id_reserva)
+
+        #creo un bucle para repasar los usuarios
+        usuarios_reserva_cancelar = []
+        #creo una lista donde meter los usuarios
+        for  usuario in reserva_cancelada.usuarios:
+            usuarios_reserva_cancelar.append(UsuarioOut(nombre= usuario.nombre,apellidos= usuario.apellidos))
+        #Reconstruyo la reserva en formato ReservaOut
+        reserva_cancelada_out = ReservaOut(
+            pista = reserva_cancelada.pista.numero,
+            usuarios= usuarios_reserva_cancelar,
+            fecha_inicio= reserva_cancelada.fecha_inicio,
+            fecha_fin = reserva_cancelada.fecha_fin,
+            id = reserva_cancelada.id
+        )
+        #retorno la reserva cancelada en formato ReservaOut
+        return reserva_cancelada_out
+    except ValueError:
+        raise HTTPException(status_code=404, detail = "id de reserva no existe")
